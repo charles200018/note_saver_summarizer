@@ -1,18 +1,4 @@
 import ytdlp from "yt-dlp-exec";
-
-type YtDlpSubtitleTrack = {
-  ext?: string;
-  url?: string;
-  name?: string;
-};
-
-type YtDlpMetadata = {
-  id?: string;
-  requested_subtitles?: Record<string, YtDlpSubtitleTrack | YtDlpSubtitleTrack[]>;
-  subtitles?: Record<string, YtDlpSubtitleTrack[]>;
-  automatic_captions?: Record<string, YtDlpSubtitleTrack[]>;
-};
-
 type SubtitleJson3 = {
   events?: Array<{
     segs?: Array<{
@@ -42,6 +28,32 @@ function collapseTranscript(lines: string[]): string {
 
   return deduped.join(" ");
 }
+
+type YtDlpSubtitleTrack = {
+  ext?: string;
+  url?: string;
+  name?: string;
+};
+
+type YtDlpMetadata = {
+  id?: string;
+  requested_subtitles?: Record<string, YtDlpSubtitleTrack | YtDlpSubtitleTrack[]>;
+  subtitles?: Record<string, YtDlpSubtitleTrack[]>;
+  automatic_captions?: Record<string, YtDlpSubtitleTrack[]>;
+};
+type CaptionTrack = {
+  baseUrl: string;
+  languageCode?: string;
+  kind?: string;
+};
+
+type PlayerResponse = {
+  captions?: {
+    playerCaptionsTracklistRenderer?: {
+      captionTracks?: CaptionTrack[];
+    };
+  };
+};
 
 function flattenSubtitleMap(
   source?: Record<string, YtDlpSubtitleTrack | YtDlpSubtitleTrack[]>
@@ -102,47 +114,6 @@ function collectEnglishTracks(metadata: YtDlpMetadata): YtDlpSubtitleTrack[] {
   return tracks;
 }
 
-async function runYtDlpForSubtitleMetadata(videoUrl: string): Promise<YtDlpMetadata> {
-  try {
-    const metadata = (await ytdlp(videoUrl, {
-      dumpSingleJson: true,
-      skipDownload: true,
-      writeAutoSub: true,
-      writeSub: true,
-      subLang: "en,en-US,en-GB,en.*",
-      subFormat: "json3",
-      noWarnings: true,
-      preferFreeFormats: true,
-    })) as YtDlpMetadata;
-
-    return metadata;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`yt-dlp process failed: ${message}`);
-  }
-}
-
-async function fetchSubtitleJson3(track: YtDlpSubtitleTrack): Promise<SubtitleJson3> {
-  if (!track.url) {
-    throw new Error("Subtitle track URL is missing.");
-  }
-
-  const response = await fetch(track.url, {
-    cache: "no-store",
-    headers: {
-      "accept-language": "en-US,en;q=0.9",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Subtitle request failed with ${response.status}.`);
-  }
-
-  return (await response.json()) as SubtitleJson3;
-}
-
 function subtitleJson3ToTranscript(payload: SubtitleJson3): string {
   const lines: string[] = [];
 
@@ -154,6 +125,103 @@ function subtitleJson3ToTranscript(payload: SubtitleJson3): string {
   }
 
   return collapseTranscript(lines);
+}
+
+async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}&hl=en`;
+
+  const response = await fetch(watchUrl, {
+    cache: "no-store",
+    headers: {
+      "accept-language": "en-US,en;q=0.9",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      cookie: "CONSENT=YES+cb.20210328-17-p0.en+FX+999",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load YouTube watch page (${response.status}).`);
+  }
+
+  const html = await response.text();
+  const marker = "ytInitialPlayerResponse =";
+  const index = html.indexOf(marker);
+  if (index === -1) {
+    throw new Error("Could not find ytInitialPlayerResponse in watch page.");
+  }
+
+  let start = html.indexOf("{", index + marker.length);
+  if (start === -1) {
+    throw new Error("Could not locate player response JSON start.");
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let i = start;
+
+  for (; i < html.length; i++) {
+    const ch = html[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === "\\") {
+        escape = true;
+      } else if (ch === "\"") {
+        inString = false;
+      }
+    } else {
+      if (ch === "\"") {
+        inString = true;
+      } else if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          i++;
+          break;
+        }
+      }
+    }
+  }
+
+  if (depth !== 0) {
+    throw new Error("Failed to parse player response JSON from watch page.");
+  }
+
+  const jsonString = html.slice(start, i);
+  return JSON.parse(jsonString) as PlayerResponse;
+}
+
+function pickBestEnglishTrack(tracks: CaptionTrack[] | undefined): CaptionTrack | null {
+  if (!tracks || tracks.length === 0) return null;
+
+  const languagePriority = ["en", "en-us", "en-gb"];
+
+  const scored = tracks
+    .map((track) => {
+      const code = (track.languageCode || "").toLowerCase();
+      const asr = track.kind === "asr";
+      let score = 100;
+
+      const idx = languagePriority.indexOf(code);
+      if (idx !== -1) {
+        score = idx * 2;
+      } else if (code.startsWith("en-")) {
+        score = 10;
+      }
+
+      if (asr) {
+        score += 1;
+      }
+
+      return { track, score };
+    })
+    .sort((a, b) => a.score - b.score);
+
+  return scored[0]?.track ?? null;
 }
 
 export function extractVideoId(input: string): string | null {
@@ -191,8 +259,23 @@ function mapTranscriptError(error: unknown): string {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const message = rawMessage.toLowerCase();
 
-  if (message.includes("yt-dlp") || message.includes("subtitle") || message.includes("caption") || message.includes("transcript")) {
+  if (message.includes("no english subtitles or auto-subtitles were found") || message.includes("no caption tracks were found")) {
     return "Subtitles are unavailable for this video, or YouTube did not return English subtitle tracks.";
+  }
+
+  if (message.includes("yt-dlp process failed")) {
+    const detail = rawMessage.length > 240 ? `${rawMessage.slice(0, 240)}...` : rawMessage;
+    return `The caption extractor failed while talking to YouTube. Details: ${detail}`;
+  }
+
+  if (message.includes("could not find ytinitialplayerresponse") || message.includes("failed to load youtube watch page")) {
+    const detail = rawMessage.length > 240 ? `${rawMessage.slice(0, 240)}...` : rawMessage;
+    return `We could not read caption information from the YouTube watch page. Details: ${detail}`;
+  }
+
+  if (message.includes("transcript was empty after parsing subtitle json3")) {
+    const detail = rawMessage.length > 240 ? `${rawMessage.slice(0, 240)}...` : rawMessage;
+    return `We found subtitle tracks but could not build a transcript from them. Details: ${detail}`;
   }
 
   if (message.includes("private") || message.includes("unavailable") || message.includes("not found")) {
@@ -210,38 +293,106 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
   }
 
   try {
-    const metadata = await runYtDlpForSubtitleMetadata(videoUrl);
-    if (!metadata?.id) {
-      throw new Error("yt-dlp did not return metadata for this video.");
+    // Primary path: yt-dlp, which is more resilient when available.
+    try {
+      const metadata = (await ytdlp(videoUrl, {
+        dumpSingleJson: true,
+        skipDownload: true,
+        writeAutoSub: true,
+        writeSub: true,
+        subLang: "en,en-US,en-GB,en.*",
+        subFormat: "json3",
+        noWarnings: true,
+        preferFreeFormats: true,
+      })) as YtDlpMetadata;
+
+      if (!metadata?.id) {
+        throw new Error("yt-dlp did not return metadata for this video.");
+      }
+
+      const englishTracks = collectEnglishTracks(metadata);
+      if (englishTracks.length === 0) {
+        throw new Error("No English subtitles or auto-subtitles were found.");
+      }
+
+      let lastError: unknown;
+      let transcript = "";
+
+      for (const track of englishTracks) {
+        try {
+          const response = await fetch(track.url!, {
+            cache: "no-store",
+            headers: {
+              "accept-language": "en-US,en;q=0.9",
+              "user-agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Subtitle request failed with ${response.status}.`);
+          }
+
+          const subtitlePayload = (await response.json()) as SubtitleJson3;
+          transcript = subtitleJson3ToTranscript(subtitlePayload);
+          if (transcript) {
+            break;
+          }
+        } catch (innerError) {
+          lastError = innerError;
+        }
+      }
+
+      if (!transcript) {
+        const suffix = lastError instanceof Error ? ` ${lastError.message}` : "";
+        throw new Error(`Transcript was empty after parsing subtitle json3.${suffix}`.trim());
+      }
+
+      return transcript;
+    } catch (ytError) {
+      // If yt-dlp isn't available (e.g., ENOENT on Vercel), fall back to watch-page captions.
+      console.error("fetchTranscript yt-dlp path failed, falling back to watch page", ytError);
     }
 
-    const englishTracks = collectEnglishTracks(metadata);
-    if (englishTracks.length === 0) {
+    const playerResponse = await fetchPlayerResponse(videoId);
+    const tracks =
+      playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+
+    if (!tracks || tracks.length === 0) {
+      throw new Error("No caption tracks were found in the YouTube player response.");
+    }
+
+    const bestTrack = pickBestEnglishTrack(tracks);
+    if (!bestTrack) {
       throw new Error("No English subtitles or auto-subtitles were found.");
     }
 
-    let lastError: unknown;
-    let transcript = "";
+    const url = new URL(bestTrack.baseUrl);
+    url.searchParams.set("fmt", "json3");
 
-    for (const track of englishTracks) {
-      try {
-        const subtitlePayload = await fetchSubtitleJson3(track);
-        transcript = subtitleJson3ToTranscript(subtitlePayload);
-        if (transcript) {
-          break;
-        }
-      } catch (error) {
-        lastError = error;
-      }
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: {
+        "accept-language": "en-US,en;q=0.9",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Subtitle request failed with ${response.status}.`);
     }
 
+    const subtitlePayload = (await response.json()) as SubtitleJson3;
+    const transcript = subtitleJson3ToTranscript(subtitlePayload);
+
     if (!transcript) {
-      const suffix = lastError instanceof Error ? ` ${lastError.message}` : "";
-      throw new Error(`Transcript was empty after parsing subtitle json3.${suffix}`.trim());
+      throw new Error("Transcript was empty after parsing subtitle json3.");
     }
 
     return transcript;
   } catch (error) {
+    console.error("fetchTranscript internal error", error);
     throw new Error(mapTranscriptError(error));
   }
 }
