@@ -39,64 +39,35 @@ function decodeHtmlEntities(input: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Strategy 1: YouTube Timedtext API — direct caption endpoint (same as yt-dlp)
-// ---------------------------------------------------------------------------
-
-async function fetchTranscriptViaTimedtext(videoId: string): Promise<string> {
-  // First get available tracks via the timedtext list endpoint
-  const listUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&type=list`;
-  const listRes = await fetch(listUrl, { cache: "no-store" });
-
-  let trackLang = "en";
-  if (listRes.ok) {
-    const listXml = await listRes.text();
-    // Try to find an English manual caption first, then fall back to any English
-    const manualEn = listXml.match(/<track[^>]*lang_code="(en[^"]*)"[^>]*(?!asr)[^>]*>/i);
-    const anyEn = listXml.match(/<track[^>]*lang_code="(en[^"]*)"/i);
-    trackLang = (manualEn?.[1] ?? anyEn?.[1] ?? "en");
-  }
-
-  // Fetch VTT captions directly
-  const vttUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${trackLang}&fmt=vtt`;
-  const vttRes = await fetch(vttUrl, { cache: "no-store" });
-  if (vttRes.ok) {
-    const vtt = await vttRes.text();
-    const text = parseVttTranscript(vtt);
-    if (text) return text;
-  }
-
-  // Fallback: XML format
-  const xmlUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${trackLang}`;
-  const xmlRes = await fetch(xmlUrl, { cache: "no-store" });
-  if (!xmlRes.ok) throw new Error(`Timedtext API returned ${xmlRes.status}`);
-  const xml = await xmlRes.text();
-  const text = parseXmlTranscript(xml);
-  if (!text) throw new Error("Timedtext response was empty");
-  return text;
-}
-
-// ---------------------------------------------------------------------------
-// Strategy 2: youtubei.js — full Innertube API implementation
+// Strategy 1: youtubei.js getInfo() → caption_tracks → fetch XML directly
+// getInfo() generates a properly authenticated Innertube session.
+// The resulting caption_tracks URLs work where raw timedtext URLs do not.
 // ---------------------------------------------------------------------------
 
 async function fetchTranscriptViaYoutubeijs(videoId: string): Promise<string> {
-  const yt = await Innertube.create({ generate_session_locally: true, lang: "en", location: "US" });
+  const yt = await Innertube.create({ generate_session_locally: true });
   const info = await yt.getInfo(videoId);
-  const transcriptData = await info.getTranscript();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const segments: any[] = (transcriptData as any)?.transcript?.content?.body?.initial_segments ?? [];
-  if (segments.length === 0) throw new Error("No transcript segments");
+  const captionTracks: any[] = (info as any)?.captions?.caption_tracks ?? [];
+  if (captionTracks.length === 0) throw new Error("No caption tracks in video info");
 
-  const text = segments
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((seg: any) => seg.type === "TranscriptSegmentRenderer")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((seg: any) => seg.snippet?.toString?.() ?? "")
-    .filter(Boolean)
-    .join(" ");
+  // Prefer manual English over ASR (auto-generated) then any track
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const preferred: any =
+    captionTracks.find((t: any) => t.language_code?.startsWith("en") && t.kind !== "asr") ||
+    captionTracks.find((t: any) => t.language_code?.startsWith("en")) ||
+    captionTracks[0];
 
-  if (!text.trim()) throw new Error("Transcript was empty");
+  const captionUrl: string = preferred.base_url;
+  if (!captionUrl) throw new Error("Caption track has no URL");
+
+  const xmlRes = await fetch(captionUrl, { cache: "no-store" });
+  if (!xmlRes.ok) throw new Error(`Caption fetch failed: ${xmlRes.status}`);
+
+  const xml = await xmlRes.text();
+  const text = parseXmlTranscript(xml);
+  if (!text) throw new Error("Caption XML was empty");
   return text;
 }
 
@@ -238,7 +209,6 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
   if (!videoId) throw new Error("Invalid YouTube URL");
 
   const strategies = [
-    () => fetchTranscriptViaTimedtext(videoId),
     () => fetchTranscriptViaYoutubeijs(videoId),
     () => fetchTranscriptViaDirectCaptionTracks(videoId),
     () => fetchTranscriptViaYoutubeTranscript(videoId),
