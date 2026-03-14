@@ -37,21 +37,146 @@ function decodeHtmlEntities(input: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
+// ---------------------------------------------------------------------------
+// Strategy 1: YouTube Innertube internal API (most reliable in serverless)
+// ---------------------------------------------------------------------------
+
+type JsonObj = Record<string, unknown>;
+
+function buildInnertubeParams(videoId: string): string {
+  // Encode videoId as a protobuf field 1 (wire type 2 = length-delimited string).
+  const videoIdBytes = Buffer.from(videoId, "utf8");
+  const proto = Buffer.concat([Buffer.from([0x0a, videoIdBytes.length]), videoIdBytes]);
+  return proto.toString("base64");
+}
+
+function findKey(obj: unknown, key: string): unknown {
+  if (!obj || typeof obj !== "object") return null;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const r = findKey(item, key);
+      if (r !== null) return r;
+    }
+    return null;
+  }
+  const record = obj as JsonObj;
+  if (key in record) return record[key];
+  for (const val of Object.values(record)) {
+    const r = findKey(val, key);
+    if (r !== null) return r;
+  }
+  return null;
+}
+
+function extractSegmentsFromInnertubeResponse(data: unknown): unknown[] | null {
+  // Try the known fast path first.
+  try {
+    const d = data as JsonObj;
+    const action = (d?.actions as JsonObj[])?.[0] as JsonObj | undefined;
+    const panel = (action?.updateEngagementPanelAction as JsonObj)?.content as JsonObj | undefined;
+    const renderer = (panel?.transcriptRenderer as JsonObj)?.content as JsonObj | undefined;
+    const body = (renderer?.transcriptSearchPanelRenderer as JsonObj)?.body as JsonObj | undefined;
+    const list = (body?.transcriptSegmentListRenderer as JsonObj)?.initialSegments;
+    if (Array.isArray(list) && list.length > 0) return list as unknown[];
+  } catch {
+    // continue to recursive search
+  }
+  // Recursive fallback: find `initialSegments` anywhere in the JSON tree.
+  const found = findKey(data as JsonObj, "initialSegments");
+  return Array.isArray(found) && found.length > 0 ? (found as unknown[]) : null;
+}
+
+async function fetchTranscriptViaInnertube(videoId: string): Promise<string> {
+  const params = buildInnertubeParams(videoId);
+
+  const response = await fetch("https://www.youtube.com/youtubei/v1/get_transcript", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      Origin: "https://www.youtube.com",
+      Referer: `https://www.youtube.com/watch?v=${videoId}`,
+    },
+    body: JSON.stringify({
+      context: {
+        client: {
+          clientName: "WEB",
+          clientVersion: "2.20240101.00.00",
+          hl: "en",
+          gl: "US",
+        },
+      },
+      params,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Innertube API responded with ${response.status}`);
+  }
+
+  const data = (await response.json()) as unknown;
+  const segments = extractSegmentsFromInnertubeResponse(data);
+
+  if (!segments) {
+    throw new Error("No transcript segments in Innertube response");
+  }
+
+  const text = segments
+    .map((s: unknown) => {
+      const seg = s as JsonObj;
+      const renderer = seg?.transcriptSegmentRenderer as JsonObj | undefined;
+      const runs = (renderer?.snippet as JsonObj)?.runs as Array<{ text?: string }> | undefined;
+      return runs?.[0]?.text ?? "";
+    })
+    .filter(Boolean)
+    .join(" ");
+
+  if (!text.trim()) {
+    throw new Error("Innertube transcript was empty");
+  }
+
+  return text;
+}
+
+// ---------------------------------------------------------------------------
+// Strategy 2: Scrape captionTracks from the YouTube watch page HTML
+// ---------------------------------------------------------------------------
+
 function extractCaptionTracksFromHtml(html: string): Array<{
   baseUrl: string;
   languageCode?: string;
   kind?: string;
 }> {
+  // Try the ytInitialPlayerResponse JSON first (more structured).
+  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var |window\[|<\/script>)/s);
+  if (playerMatch) {
+    try {
+      const player = JSON.parse(playerMatch[1]) as JsonObj;
+      const tracks = (
+        ((player?.captions as JsonObj)?.playerCaptionsTracklistRenderer as JsonObj)
+          ?.captionTracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>
+      );
+      if (Array.isArray(tracks) && tracks.length > 0) {
+        return tracks.filter((t) => Boolean(t.baseUrl));
+      }
+    } catch {
+      // fall through to simpler regex
+    }
+  }
+
+  // Simpler regex fallback.
   const match = html.match(/"captionTracks":(\[[^\]]*\])/);
   if (!match) return [];
-
   try {
     const parsed = JSON.parse(match[1]) as Array<{
       baseUrl: string;
       languageCode?: string;
       kind?: string;
     }>;
-    return parsed.filter((track) => Boolean(track.baseUrl));
+    return parsed.filter((t) => Boolean(t.baseUrl));
   } catch {
     return [];
   }
@@ -76,7 +201,6 @@ function parseVttTranscript(vtt: string): string {
         !/^\d+$/.test(line)
     )
     .map((line) => line.replace(/<[^>]+>/g, ""));
-
   return collapseTranscript(lines);
 }
 
@@ -84,51 +208,46 @@ async function fetchTranscriptViaDirectCaptionTracks(videoId: string): Promise<s
   const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
     headers: {
       "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       "accept-language": "en-US,en;q=0.9",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "cookie": "CONSENT=YES+1; SOCS=CAI",
     },
     cache: "no-store",
   });
 
-  if (!watchResponse.ok) {
-    throw new Error("Unable to load video metadata for captions.");
-  }
+  if (!watchResponse.ok) throw new Error("Unable to load YouTube page.");
 
   const html = await watchResponse.text();
   const tracks = extractCaptionTracksFromHtml(html);
-  if (tracks.length === 0) {
-    throw new Error("No caption tracks found.");
-  }
+  if (tracks.length === 0) throw new Error("No caption tracks found in page HTML.");
 
   const preferredTrack =
-    tracks.find((track) => track.languageCode?.toLowerCase().startsWith("en") && track.kind !== "asr") ||
-    tracks.find((track) => track.languageCode?.toLowerCase().startsWith("en")) ||
+    tracks.find((t) => t.languageCode?.toLowerCase().startsWith("en") && t.kind !== "asr") ||
+    tracks.find((t) => t.languageCode?.toLowerCase().startsWith("en")) ||
     tracks[0];
 
-  const captionUrl = preferredTrack.baseUrl;
-  const vttResponse = await fetch(`${captionUrl}&fmt=vtt`, { cache: "no-store" });
+  const vttResponse = await fetch(`${preferredTrack.baseUrl}&fmt=vtt`, { cache: "no-store" });
   if (vttResponse.ok) {
-    const vtt = await vttResponse.text();
-    const vttTranscript = parseVttTranscript(vtt);
+    const vttTranscript = parseVttTranscript(await vttResponse.text());
     if (vttTranscript) return vttTranscript;
   }
 
-  const xmlResponse = await fetch(captionUrl, { cache: "no-store" });
-  if (!xmlResponse.ok) {
-    throw new Error("Caption track request failed.");
-  }
+  const xmlResponse = await fetch(preferredTrack.baseUrl, { cache: "no-store" });
+  if (!xmlResponse.ok) throw new Error("Caption track download failed.");
 
-  const xml = await xmlResponse.text();
-  const xmlTranscript = parseXmlTranscript(xml);
+  const xmlTranscript = parseXmlTranscript(await xmlResponse.text());
   if (xmlTranscript) return xmlTranscript;
 
-  throw new Error("Caption track was found but transcript was empty.");
+  throw new Error("Caption track was empty.");
 }
 
-async function fetchTranscriptViaYoutubeTranscript(videoId: string): Promise<string> {
-  const languagePreference = ["en", "en-US", "en-GB"];
+// ---------------------------------------------------------------------------
+// Strategy 3: youtube-transcript npm package
+// ---------------------------------------------------------------------------
 
-  for (const lang of languagePreference) {
+async function fetchTranscriptViaYoutubeTranscript(videoId: string): Promise<string> {
+  for (const lang of ["en", "en-US", "en-GB"]) {
     try {
       const transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang });
       const text = collapseTranscript(transcript.map((line) => line.text || ""));
@@ -138,59 +257,65 @@ async function fetchTranscriptViaYoutubeTranscript(videoId: string): Promise<str
     }
   }
 
-  // Last attempt: let library auto-select available language track.
   try {
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     const text = collapseTranscript(transcript.map((line) => line.text || ""));
     if (text) return text;
   } catch {
-    // Fall through to secondary strategy.
+    // Fall through.
   }
 
-  throw new Error("Primary transcript fetch failed.");
+  throw new Error("youtube-transcript library failed.");
 }
 
-async function fetchTranscriptViaCaptionsScraper(videoId: string): Promise<string> {
-  const languagePreference = ["en", "en-US", "en-GB"];
+// ---------------------------------------------------------------------------
+// Strategy 4: youtube-captions-scraper npm package
+// ---------------------------------------------------------------------------
 
-  for (const lang of languagePreference) {
+async function fetchTranscriptViaCaptionsScraper(videoId: string): Promise<string> {
+  for (const lang of ["en", "en-US", "en-GB"]) {
     try {
       const subtitles = await getSubtitles({ videoID: videoId, lang });
       const transcript = subtitles
         .map((item) => normalizeCaptionText(item.text || ""))
         .filter(Boolean)
         .join(" ");
-
       if (transcript) return transcript;
     } catch {
-      // Try the next language variant.
+      // Try next language.
     }
   }
-
-  throw new Error("This video does not have accessible English captions.");
+  throw new Error("youtube-captions-scraper library failed.");
 }
+
+// ---------------------------------------------------------------------------
+// Public entry point: try all strategies in order
+// ---------------------------------------------------------------------------
 
 export async function fetchTranscript(videoUrl: string): Promise<string> {
   const videoId = extractVideoId(videoUrl);
-  if (!videoId) {
-    throw new Error("Invalid YouTube URL");
-  }
+  if (!videoId) throw new Error("Invalid YouTube URL");
 
-  try {
-    return await fetchTranscriptViaDirectCaptionTracks(videoId);
-  } catch {
+  const strategies = [
+    () => fetchTranscriptViaInnertube(videoId),
+    () => fetchTranscriptViaDirectCaptionTracks(videoId),
+    () => fetchTranscriptViaYoutubeTranscript(videoId),
+    () => fetchTranscriptViaCaptionsScraper(videoId),
+  ];
+
+  let lastError = "";
+  for (const strategy of strategies) {
     try {
-      return await fetchTranscriptViaYoutubeTranscript(videoId);
-    } catch {
-      try {
-        return await fetchTranscriptViaCaptionsScraper(videoId);
-      } catch {
-        throw new Error(
-          "Could not retrieve captions for this video. Ensure captions are available and the video is public."
-        );
-      }
+      const text = await strategy();
+      if (text) return text;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
     }
   }
+
+  throw new Error(
+    `Could not retrieve captions for this video. ${lastError} Ensure the video is public and has captions enabled.`
+  );
 }
 
 export function getVideoThumbnail(videoUrl: string): string {
