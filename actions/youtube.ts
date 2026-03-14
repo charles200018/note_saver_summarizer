@@ -6,7 +6,15 @@ import { summarizeTranscript } from "@/lib/groq";
 import { revalidatePath } from "next/cache";
 
 type SummarizeResult =
-  | { success: true; data: { id: string } }
+  | {
+      success: true;
+      data: {
+        id: string;
+        tldr: string;
+        keyPoints: string[];
+        detailedSummary: string;
+      };
+    }
   | { success: false; error: string };
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
@@ -97,7 +105,15 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
     }
 
     revalidatePath("/youtube");
-    return { success: true, data } satisfies SummarizeResult;
+    return {
+      success: true,
+      data: {
+        id: data.id,
+        tldr,
+        keyPoints,
+        detailedSummary,
+      },
+    } satisfies SummarizeResult;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error while summarizing video.";
     return { success: false, error: message } satisfies SummarizeResult;

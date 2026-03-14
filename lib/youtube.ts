@@ -1,3 +1,25 @@
+import ytdlp from "yt-dlp-exec";
+
+type YtDlpSubtitleTrack = {
+  ext?: string;
+  url?: string;
+  name?: string;
+};
+
+type YtDlpMetadata = {
+  id?: string;
+  subtitles?: Record<string, YtDlpSubtitleTrack[]>;
+  automatic_captions?: Record<string, YtDlpSubtitleTrack[]>;
+};
+
+type SubtitleJson3 = {
+  events?: Array<{
+    segs?: Array<{
+      utf8?: string;
+    }>;
+  }>;
+};
+
 function normalizeCaptionText(text: string): string {
   return text
     .replace(/\s+/g, " ")
@@ -7,178 +29,84 @@ function normalizeCaptionText(text: string): string {
 }
 
 function collapseTranscript(lines: string[]): string {
-  return lines.map((line) => normalizeCaptionText(line)).filter(Boolean).join(" ");
-}
+  const cleaned = lines.map((line) => normalizeCaptionText(line)).filter(Boolean);
 
-type CaptionTrack = {
-  baseUrl: string;
-  languageCode?: string;
-  kind?: string;
-  name?: {
-    simpleText?: string;
-    runs?: Array<{ text?: string }>;
-  };
-};
-
-type PlayerResponse = {
-  captions?: {
-    playerCaptionsTracklistRenderer?: {
-      captionTracks?: CaptionTrack[];
-    };
-  };
-};
-
-function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, "/")
-    .replace(/&nbsp;/g, " ");
-}
-
-function parseCaptionXml(xml: string): string {
-  const segments = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((match) =>
-    decodeHtmlEntities(match[1] || "")
-  );
-
-  return collapseTranscript(segments);
-}
-
-function extractJsonObject(source: string, marker: string): string | null {
-  const markerIndex = source.indexOf(marker);
-  if (markerIndex === -1) {
-    return null;
+  // Drop immediate duplicates from fragmented subtitle segments.
+  const deduped: string[] = [];
+  for (const line of cleaned) {
+    if (deduped[deduped.length - 1] !== line) {
+      deduped.push(line);
+    }
   }
 
-  const startIndex = source.indexOf("{", markerIndex + marker.length);
-  if (startIndex === -1) {
-    return null;
-  }
+  return deduped.join(" ");
+}
 
-  let depth = 0;
-  let inString = false;
-  let isEscaped = false;
+function collectEnglishTracks(metadata: YtDlpMetadata): YtDlpSubtitleTrack[] {
+  const languagePriority = ["en", "en-us", "en-gb"];
+  const buckets = [metadata.subtitles, metadata.automatic_captions];
+  const tracks: YtDlpSubtitleTrack[] = [];
 
-  for (let index = startIndex; index < source.length; index += 1) {
-    const char = source[index];
+  for (const source of buckets) {
+    if (!source) continue;
 
-    if (inString) {
-      if (isEscaped) {
-        isEscaped = false;
-      } else if (char === "\\") {
-        isEscaped = true;
-      } else if (char === '"') {
-        inString = false;
+    const sourceEntries = Object.entries(source).sort((left, right) => {
+      const leftIndex = languagePriority.indexOf(left[0].toLowerCase());
+      const rightIndex = languagePriority.indexOf(right[0].toLowerCase());
+      const normalizedLeft = leftIndex === -1 ? 99 : leftIndex;
+      const normalizedRight = rightIndex === -1 ? 99 : rightIndex;
+      return normalizedLeft - normalizedRight;
+    });
+
+    for (const [language, variants] of sourceEntries) {
+      const normalizedLanguage = language.toLowerCase();
+      if (
+        normalizedLanguage !== "en" &&
+        normalizedLanguage !== "en-us" &&
+        normalizedLanguage !== "en-gb" &&
+        !normalizedLanguage.startsWith("en-")
+      ) {
+        continue;
       }
-      continue;
-    }
 
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (char === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(startIndex, index + 1);
+      for (const variant of variants || []) {
+        if (!variant.url) continue;
+        if (variant.ext === "json3" || variant.url.includes("fmt=json3")) {
+          tracks.push(variant);
+        }
       }
     }
   }
 
-  return null;
+  return tracks;
 }
 
-async function fetchYouTubeWatchPage(videoId: string): Promise<string> {
-  const response = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
-    cache: "no-store",
-    headers: {
-      "accept-language": "en-US,en;q=0.9",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      cookie: "CONSENT=YES+1; SOCS=CAI",
-    },
-  });
+async function runYtDlpForSubtitleMetadata(videoUrl: string): Promise<YtDlpMetadata> {
+  try {
+    const metadata = (await ytdlp(videoUrl, {
+      dumpSingleJson: true,
+      skipDownload: true,
+      writeAutoSub: true,
+      writeSub: true,
+      subLang: "en,en-US,en-GB,en.*",
+      subFormat: "json3",
+      noWarnings: true,
+      preferFreeFormats: true,
+    })) as YtDlpMetadata;
 
-  if (!response.ok) {
-    throw new Error(`Failed to load YouTube watch page: ${response.status}`);
+    return metadata;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`yt-dlp process failed: ${message}`);
+  }
+}
+
+async function fetchSubtitleJson3(track: YtDlpSubtitleTrack): Promise<SubtitleJson3> {
+  if (!track.url) {
+    throw new Error("Subtitle track URL is missing.");
   }
 
-  return response.text();
-}
-
-function extractPlayerResponse(html: string): PlayerResponse {
-  const candidates = [
-    "var ytInitialPlayerResponse = ",
-    "ytInitialPlayerResponse = ",
-    "window[\"ytInitialPlayerResponse\"] = ",
-  ];
-
-  for (const marker of candidates) {
-    const json = extractJsonObject(html, marker);
-    if (!json) {
-      continue;
-    }
-
-    try {
-      return JSON.parse(json) as PlayerResponse;
-    } catch {
-      // Try next marker.
-    }
-  }
-
-  throw new Error("Could not locate ytInitialPlayerResponse on the watch page.");
-}
-
-function getCaptionTracks(playerResponse: PlayerResponse): CaptionTrack[] {
-  return playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-}
-
-function getTrackName(track: CaptionTrack): string {
-  if (track.name?.simpleText) {
-    return track.name.simpleText;
-  }
-
-  return track.name?.runs?.map((run) => run.text || "").join(" ") || "";
-}
-
-function selectBestEnglishCaptionTrack(captionTracks: CaptionTrack[]): CaptionTrack | null {
-  if (captionTracks.length === 0) {
-    return null;
-  }
-
-  const scoreTrack = (track: CaptionTrack): number => {
-    const code = (track.languageCode || "").toLowerCase();
-    const isAutoCaption = track.kind === "asr" || getTrackName(track).toLowerCase().includes("auto");
-
-    if (code === "en" && !isAutoCaption) return 100;
-    if ((code === "en-us" || code === "en-gb") && !isAutoCaption) return 90;
-    if (code.startsWith("en") && !isAutoCaption) return 80;
-    if (code === "en" && isAutoCaption) return 70;
-    if ((code === "en-us" || code === "en-gb") && isAutoCaption) return 60;
-    if (code.startsWith("en") && isAutoCaption) return 50;
-    return 0;
-  };
-
-  const sorted = [...captionTracks]
-    .map((track) => ({ track, score: scoreTrack(track) }))
-    .filter((entry) => entry.score > 0)
-    .sort((left, right) => right.score - left.score);
-
-  return sorted[0]?.track ?? null;
-}
-
-async function fetchCaptionTrackXml(baseUrl: string): Promise<string> {
-  const response = await fetch(baseUrl, {
+  const response = await fetch(track.url, {
     cache: "no-store",
     headers: {
       "accept-language": "en-US,en;q=0.9",
@@ -188,15 +116,23 @@ async function fetchCaptionTrackXml(baseUrl: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Caption track request failed: ${response.status}`);
+    throw new Error(`Subtitle request failed with ${response.status}.`);
   }
 
-  const xml = await response.text();
-  if (!xml.trim()) {
-    throw new Error("Caption track response was empty.");
+  return (await response.json()) as SubtitleJson3;
+}
+
+function subtitleJson3ToTranscript(payload: SubtitleJson3): string {
+  const lines: string[] = [];
+
+  for (const event of payload.events || []) {
+    const text = (event.segs || []).map((segment) => segment.utf8 || "").join("").trim();
+    if (text) {
+      lines.push(text);
+    }
   }
 
-  return xml;
+  return collapseTranscript(lines);
 }
 
 export function extractVideoId(input: string): string | null {
@@ -233,8 +169,8 @@ export function extractVideoId(input: string): string | null {
 function mapTranscriptError(error: unknown): string {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
-  if (message.includes("ytinitialplayerresponse") || message.includes("caption") || message.includes("transcript")) {
-    return "Captions are unavailable for this video, or YouTube did not expose caption tracks.";
+  if (message.includes("yt-dlp") || message.includes("subtitle") || message.includes("caption") || message.includes("transcript")) {
+    return "Subtitles are unavailable for this video, or YouTube did not return English subtitle tracks.";
   }
 
   if (message.includes("private") || message.includes("unavailable") || message.includes("not found")) {
@@ -251,24 +187,34 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
   }
 
   try {
-    const html = await fetchYouTubeWatchPage(videoId);
-    const playerResponse = extractPlayerResponse(html);
-    const captionTracks = getCaptionTracks(playerResponse);
-
-    if (captionTracks.length === 0) {
-      throw new Error("Caption tracks were not found for this video.");
+    const metadata = await runYtDlpForSubtitleMetadata(videoUrl);
+    if (!metadata?.id) {
+      throw new Error("yt-dlp did not return metadata for this video.");
     }
 
-    const bestTrack = selectBestEnglishCaptionTrack(captionTracks);
-    if (!bestTrack?.baseUrl) {
-      throw new Error("No English caption track is available for this video.");
+    const englishTracks = collectEnglishTracks(metadata);
+    if (englishTracks.length === 0) {
+      throw new Error("No English subtitles or auto-subtitles were found.");
     }
 
-    const xml = await fetchCaptionTrackXml(bestTrack.baseUrl);
-    const transcript = parseCaptionXml(xml);
+    let lastError: unknown;
+    let transcript = "";
+
+    for (const track of englishTracks) {
+      try {
+        const subtitlePayload = await fetchSubtitleJson3(track);
+        transcript = subtitleJson3ToTranscript(subtitlePayload);
+        if (transcript) {
+          break;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+    }
 
     if (!transcript) {
-      throw new Error("Transcript was empty after parsing caption XML.");
+      const suffix = lastError instanceof Error ? ` ${lastError.message}` : "";
+      throw new Error(`Transcript was empty after parsing subtitle json3.${suffix}`.trim());
     }
 
     return transcript;

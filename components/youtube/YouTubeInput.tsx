@@ -30,6 +30,11 @@ export function YouTubeInput() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [summary, setSummary] = useState<{
+    tldr: string;
+    keyPoints: string[];
+    detailedSummary: string;
+  } | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,6 +49,7 @@ export function YouTubeInput() {
 
     setLoading(true);
     setError("");
+    setSummary(null);
 
     try {
       const result = await summarizeYouTubeVideo(trimmedUrl);
@@ -52,6 +58,11 @@ export function YouTubeInput() {
         return;
       }
 
+      setSummary({
+        tldr: result.data.tldr,
+        keyPoints: result.data.keyPoints,
+        detailedSummary: result.data.detailedSummary,
+      });
       setUrl("");
       router.refresh();
     } catch (err) {
@@ -110,6 +121,29 @@ export function YouTubeInput() {
         <p className="mt-4 text-sm text-[#b4783c] bg-[#b4783c]/10 rounded-lg px-4 py-3 border border-[#b4783c]/20 font-light">
           {error}
         </p>
+      )}
+
+      {summary && (
+        <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
+          <div>
+            <h4 className="text-xs tracking-wider uppercase text-[var(--color-muted)] mb-2">TLDR</h4>
+            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{summary.tldr}</p>
+          </div>
+
+          <div>
+            <h4 className="text-xs tracking-wider uppercase text-[var(--color-muted)] mb-2">Key Points</h4>
+            <ul className="space-y-1 text-sm text-[var(--color-foreground)] list-disc pl-5">
+              {summary.keyPoints.map((point, index) => (
+                <li key={`${index}-${point.slice(0, 20)}`}>{point}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs tracking-wider uppercase text-[var(--color-muted)] mb-2">Detailed Summary</h4>
+            <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{summary.detailedSummary}</p>
+          </div>
+        </div>
       )}
     </motion.div>
   );
