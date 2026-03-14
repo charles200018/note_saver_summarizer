@@ -150,24 +150,6 @@ function extractCaptionTracksFromHtml(html: string): Array<{
   languageCode?: string;
   kind?: string;
 }> {
-  // Try the ytInitialPlayerResponse JSON first (more structured).
-  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var |window\[|<\/script>)/s);
-  if (playerMatch) {
-    try {
-      const player = JSON.parse(playerMatch[1]) as JsonObj;
-      const tracks = (
-        ((player?.captions as JsonObj)?.playerCaptionsTracklistRenderer as JsonObj)
-          ?.captionTracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>
-      );
-      if (Array.isArray(tracks) && tracks.length > 0) {
-        return tracks.filter((t) => Boolean(t.baseUrl));
-      }
-    } catch {
-      // fall through to simpler regex
-    }
-  }
-
-  // Simpler regex fallback.
   const match = html.match(/"captionTracks":(\[[^\]]*\])/);
   if (!match) return [];
   try {
