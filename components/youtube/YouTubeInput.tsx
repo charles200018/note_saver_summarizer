@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { summarizeYouTubeVideo } from "@/actions/youtube";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export function YouTubeInput() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,8 +19,14 @@ export function YouTubeInput() {
     setError("");
 
     try {
-      await summarizeYouTubeVideo(url.trim());
+      const result = await summarizeYouTubeVideo(url.trim());
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+
       setUrl("");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to summarize video");
     } finally {

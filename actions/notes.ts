@@ -116,10 +116,6 @@ export async function togglePinNote(id: string, isPinned: boolean) {
 }
 
 export async function smartSearch(query: string) {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is missing in deployment environment variables.");
-  }
-
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -138,6 +134,25 @@ export async function smartSearch(query: string) {
   const notesSummary = notes.map((n, i) => 
     `[${i + 1}] Title: "${n.title}" | Tags: ${n.tags?.join(", ") || "none"} | Preview: ${n.content?.slice(0, 200)}...`
   ).join("\n\n");
+
+  const fallbackKeywordSearch = () => {
+    const searchLower = query.toLowerCase();
+    const matchedNotes = notes.filter(n => 
+      n.title?.toLowerCase().includes(searchLower) || 
+      n.content?.toLowerCase().includes(searchLower) ||
+      n.tags?.some((t: string) => t.toLowerCase().includes(searchLower))
+    );
+    return {
+      results: matchedNotes,
+      answer: matchedNotes.length > 0
+        ? `Found ${matchedNotes.length} note(s) matching "${query}".`
+        : `No notes found matching "${query}".`,
+    };
+  };
+
+  if (!process.env.GROQ_API_KEY) {
+    return fallbackKeywordSearch();
+  }
 
   // Use Groq to find relevant notes and answer the query
   try {
@@ -185,18 +200,7 @@ ${notesSummary}`
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       // Fallback to simple text search
-      const searchLower = query.toLowerCase();
-      const matchedNotes = notes.filter(n => 
-        n.title?.toLowerCase().includes(searchLower) || 
-        n.content?.toLowerCase().includes(searchLower) ||
-        n.tags?.some((t: string) => t.toLowerCase().includes(searchLower))
-      );
-      return { 
-        results: matchedNotes, 
-        answer: matchedNotes.length > 0 
-          ? `Found ${matchedNotes.length} note(s) matching "${query}".`
-          : `No notes found matching "${query}".`
-      };
+      return fallbackKeywordSearch();
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
@@ -209,17 +213,6 @@ ${notesSummary}`
     };
   } catch {
     // Fallback to simple text search on error
-    const searchLower = query.toLowerCase();
-    const matchedNotes = notes.filter(n => 
-      n.title?.toLowerCase().includes(searchLower) || 
-      n.content?.toLowerCase().includes(searchLower) ||
-      n.tags?.some((t: string) => t.toLowerCase().includes(searchLower))
-    );
-    return { 
-      results: matchedNotes, 
-      answer: matchedNotes.length > 0 
-        ? `Found ${matchedNotes.length} note(s) matching "${query}".`
-        : `No notes found matching "${query}".`
-    };
+    return fallbackKeywordSearch();
   }
 }
