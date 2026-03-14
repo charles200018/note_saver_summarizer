@@ -1,3 +1,4 @@
+import { Innertube } from "youtubei.js";
 import { getSubtitles } from "youtube-captions-scraper";
 import { YoutubeTranscript } from "youtube-transcript";
 
@@ -38,106 +39,29 @@ function decodeHtmlEntities(input: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Strategy 1: YouTube Innertube internal API (most reliable in serverless)
+// Strategy 1: youtubei.js — full Innertube API implementation (most reliable)
 // ---------------------------------------------------------------------------
 
-type JsonObj = Record<string, unknown>;
+async function fetchTranscriptViaYoutubeijs(videoId: string): Promise<string> {
+  const yt = await Innertube.create({ lang: "en", location: "US" });
+  const info = await yt.getInfo(videoId);
+  const transcriptData = await info.getTranscript();
 
-function buildInnertubeParams(videoId: string): string {
-  // Encode videoId as a protobuf field 1 (wire type 2 = length-delimited string).
-  const videoIdBytes = Buffer.from(videoId, "utf8");
-  const proto = Buffer.concat([Buffer.from([0x0a, videoIdBytes.length]), videoIdBytes]);
-  return proto.toString("base64");
-}
-
-function findKey(obj: unknown, key: string): unknown {
-  if (!obj || typeof obj !== "object") return null;
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const r = findKey(item, key);
-      if (r !== null) return r;
-    }
-    return null;
-  }
-  const record = obj as JsonObj;
-  if (key in record) return record[key];
-  for (const val of Object.values(record)) {
-    const r = findKey(val, key);
-    if (r !== null) return r;
-  }
-  return null;
-}
-
-function extractSegmentsFromInnertubeResponse(data: unknown): unknown[] | null {
-  // Try the known fast path first.
-  try {
-    const d = data as JsonObj;
-    const action = (d?.actions as JsonObj[])?.[0] as JsonObj | undefined;
-    const panel = (action?.updateEngagementPanelAction as JsonObj)?.content as JsonObj | undefined;
-    const renderer = (panel?.transcriptRenderer as JsonObj)?.content as JsonObj | undefined;
-    const body = (renderer?.transcriptSearchPanelRenderer as JsonObj)?.body as JsonObj | undefined;
-    const list = (body?.transcriptSegmentListRenderer as JsonObj)?.initialSegments;
-    if (Array.isArray(list) && list.length > 0) return list as unknown[];
-  } catch {
-    // continue to recursive search
-  }
-  // Recursive fallback: find `initialSegments` anywhere in the JSON tree.
-  const found = findKey(data as JsonObj, "initialSegments");
-  return Array.isArray(found) && found.length > 0 ? (found as unknown[]) : null;
-}
-
-async function fetchTranscriptViaInnertube(videoId: string): Promise<string> {
-  const params = buildInnertubeParams(videoId);
-
-  const response = await fetch("https://www.youtube.com/youtubei/v1/get_transcript", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      Origin: "https://www.youtube.com",
-      Referer: `https://www.youtube.com/watch?v=${videoId}`,
-    },
-    body: JSON.stringify({
-      context: {
-        client: {
-          clientName: "WEB",
-          clientVersion: "2.20240101.00.00",
-          hl: "en",
-          gl: "US",
-        },
-      },
-      params,
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Innertube API responded with ${response.status}`);
-  }
-
-  const data = (await response.json()) as unknown;
-  const segments = extractSegmentsFromInnertubeResponse(data);
-
-  if (!segments) {
-    throw new Error("No transcript segments in Innertube response");
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const segments: unknown[] = (transcriptData as any)?.transcript?.content?.body?.initial_segments ?? [];
+  if (segments.length === 0) throw new Error("No transcript segments");
 
   const text = segments
-    .map((s: unknown) => {
-      const seg = s as JsonObj;
-      const renderer = seg?.transcriptSegmentRenderer as JsonObj | undefined;
-      const runs = (renderer?.snippet as JsonObj)?.runs as Array<{ text?: string }> | undefined;
-      return runs?.[0]?.text ?? "";
+    .map((seg) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = seg as any;
+      // TranscriptSegmentRenderer has `snippet` (Text object); TranscriptSectionHeaderRenderer doesn't
+      return typeof s?.snippet?.toString === "function" ? s.snippet.toString() : "";
     })
     .filter(Boolean)
     .join(" ");
 
-  if (!text.trim()) {
-    throw new Error("Innertube transcript was empty");
-  }
-
+  if (!text.trim()) throw new Error("Transcript was empty");
   return text;
 }
 
@@ -279,7 +203,7 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
   if (!videoId) throw new Error("Invalid YouTube URL");
 
   const strategies = [
-    () => fetchTranscriptViaInnertube(videoId),
+    () => fetchTranscriptViaYoutubeijs(videoId),
     () => fetchTranscriptViaDirectCaptionTracks(videoId),
     () => fetchTranscriptViaYoutubeTranscript(videoId),
     () => fetchTranscriptViaCaptionsScraper(videoId),
