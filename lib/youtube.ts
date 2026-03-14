@@ -27,6 +27,104 @@ function collapseTranscript(lines: string[]): string {
   return lines.map((line) => normalizeCaptionText(line)).filter(Boolean).join(" ");
 }
 
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, " ");
+}
+
+function extractCaptionTracksFromHtml(html: string): Array<{
+  baseUrl: string;
+  languageCode?: string;
+  kind?: string;
+}> {
+  const match = html.match(/"captionTracks":(\[[^\]]*\])/);
+  if (!match) return [];
+
+  try {
+    const parsed = JSON.parse(match[1]) as Array<{
+      baseUrl: string;
+      languageCode?: string;
+      kind?: string;
+    }>;
+    return parsed.filter((track) => Boolean(track.baseUrl));
+  } catch {
+    return [];
+  }
+}
+
+function parseXmlTranscript(xml: string): string {
+  const segments = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((m) =>
+    decodeHtmlEntities(m[1] || "")
+  );
+  return collapseTranscript(segments);
+}
+
+function parseVttTranscript(vtt: string): string {
+  const lines = vtt
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line &&
+        !line.startsWith("WEBVTT") &&
+        !line.includes("-->") &&
+        !/^\d+$/.test(line)
+    )
+    .map((line) => line.replace(/<[^>]+>/g, ""));
+
+  return collapseTranscript(lines);
+}
+
+async function fetchTranscriptViaDirectCaptionTracks(videoId: string): Promise<string> {
+  const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36",
+      "accept-language": "en-US,en;q=0.9",
+    },
+    cache: "no-store",
+  });
+
+  if (!watchResponse.ok) {
+    throw new Error("Unable to load video metadata for captions.");
+  }
+
+  const html = await watchResponse.text();
+  const tracks = extractCaptionTracksFromHtml(html);
+  if (tracks.length === 0) {
+    throw new Error("No caption tracks found.");
+  }
+
+  const preferredTrack =
+    tracks.find((track) => track.languageCode?.toLowerCase().startsWith("en") && track.kind !== "asr") ||
+    tracks.find((track) => track.languageCode?.toLowerCase().startsWith("en")) ||
+    tracks[0];
+
+  const captionUrl = preferredTrack.baseUrl;
+  const vttResponse = await fetch(`${captionUrl}&fmt=vtt`, { cache: "no-store" });
+  if (vttResponse.ok) {
+    const vtt = await vttResponse.text();
+    const vttTranscript = parseVttTranscript(vtt);
+    if (vttTranscript) return vttTranscript;
+  }
+
+  const xmlResponse = await fetch(captionUrl, { cache: "no-store" });
+  if (!xmlResponse.ok) {
+    throw new Error("Caption track request failed.");
+  }
+
+  const xml = await xmlResponse.text();
+  const xmlTranscript = parseXmlTranscript(xml);
+  if (xmlTranscript) return xmlTranscript;
+
+  throw new Error("Caption track was found but transcript was empty.");
+}
+
 async function fetchTranscriptViaYoutubeTranscript(videoId: string): Promise<string> {
   const languagePreference = ["en", "en-US", "en-GB"];
 
@@ -79,14 +177,18 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
   }
 
   try {
-    return await fetchTranscriptViaYoutubeTranscript(videoId);
+    return await fetchTranscriptViaDirectCaptionTracks(videoId);
   } catch {
     try {
-      return await fetchTranscriptViaCaptionsScraper(videoId);
+      return await fetchTranscriptViaYoutubeTranscript(videoId);
     } catch {
-      throw new Error(
-        "Could not retrieve captions for this video. Ensure captions are available and the video is public."
-      );
+      try {
+        return await fetchTranscriptViaCaptionsScraper(videoId);
+      } catch {
+        throw new Error(
+          "Could not retrieve captions for this video. Ensure captions are available and the video is public."
+        );
+      }
     }
   }
 }
