@@ -1,61 +1,159 @@
-export async function summarizeTranscript(transcript: string): Promise<{
+import "server-only";
+
+export type TranscriptSummary = {
   tldr: string;
   keyPoints: string[];
   detailedSummary: string;
-}> {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is missing in deployment environment variables.");
+};
+
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = process.env.GROQ_SUMMARY_MODEL || "llama-3.1-8b-instant";
+const MAX_CHARS_PER_CHUNK = 10000;
+
+function normalizeText(input: string): string {
+  return input.replace(/\s+/g, " ").trim();
+}
+
+function splitTranscriptIntoChunks(transcript: string, maxChunkChars = MAX_CHARS_PER_CHUNK): string[] {
+  const normalized = normalizeText(transcript);
+  if (normalized.length <= maxChunkChars) {
+    return [normalized];
   }
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const sentences = normalized.split(/(?<=[.!?])\s+/);
+  const chunks: string[] = [];
+  let currentChunk = "";
+
+  for (const sentence of sentences) {
+    if (!sentence) {
+      continue;
+    }
+
+    if ((currentChunk + " " + sentence).trim().length > maxChunkChars) {
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+      }
+
+      if (sentence.length > maxChunkChars) {
+        for (let index = 0; index < sentence.length; index += maxChunkChars) {
+          chunks.push(sentence.slice(index, index + maxChunkChars).trim());
+        }
+        currentChunk = "";
+      } else {
+        currentChunk = sentence;
+      }
+    } else {
+      currentChunk = `${currentChunk} ${sentence}`.trim();
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks.filter(Boolean);
+}
+
+function parseSummaryPayload(payload: string): TranscriptSummary {
+  const jsonMatch = payload.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("Failed to parse Groq response.");
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as Partial<TranscriptSummary>;
+
+  return {
+    tldr: normalizeText(parsed.tldr || ""),
+    keyPoints: Array.isArray(parsed.keyPoints)
+      ? parsed.keyPoints.map((point) => normalizeText(String(point))).filter(Boolean)
+      : [],
+    detailedSummary: normalizeText(parsed.detailedSummary || ""),
+  };
+}
+
+async function requestSummary(content: string, contextLabel: string): Promise<TranscriptSummary> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+
+  const response = await fetch(GROQ_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-3.1-8b-instruct",
+      model: GROQ_MODEL,
+      temperature: 0.2,
+      max_tokens: 1400,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "You are a helpful assistant that summarizes YouTube video transcripts. Always respond in valid JSON format.",
+            "You summarize YouTube transcripts. Return only valid JSON with keys tldr, keyPoints, and detailedSummary.",
         },
         {
           role: "user",
-          content: `Summarize this YouTube video transcript. Return ONLY valid JSON with this exact structure:
+          content: `Summarize the ${contextLabel} below. Requirements:
+- tldr: exactly 2 sentences
+- keyPoints: 4 to 6 short bullet-ready strings
+- detailedSummary: one clear paragraph
+- respond with JSON only using this exact shape:
 {
-  "tldr": "A 2-3 sentence summary",
-  "keyPoints": ["point 1", "point 2", "point 3"],
-  "detailedSummary": "A detailed paragraph summary"
+  "tldr": "",
+  "keyPoints": [""],
+  "detailedSummary": ""
 }
 
-Transcript:
-${transcript.slice(0, 12000)}`,
+Content:
+${content}`,
         },
       ],
-      temperature: 0.3,
-      max_tokens: 2000,
     }),
+    cache: "no-store",
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Groq API error: ${error}`);
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${errorText}`);
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content ?? "";
-
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Failed to parse AI response as JSON");
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  return {
-    tldr: parsed.tldr || "",
-    keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
-    detailedSummary: parsed.detailedSummary || "",
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
   };
+  const payload = data.choices?.[0]?.message?.content;
+
+  if (!payload) {
+    throw new Error("Groq returned an empty response.");
+  }
+
+  return parseSummaryPayload(payload);
+}
+
+export async function summarizeTranscript(transcript: string): Promise<TranscriptSummary> {
+  const normalizedTranscript = normalizeText(transcript);
+  if (!normalizedTranscript) {
+    throw new Error("Transcript is empty.");
+  }
+
+  const chunks = splitTranscriptIntoChunks(normalizedTranscript);
+  if (chunks.length === 1) {
+    return requestSummary(chunks[0], "transcript");
+  }
+
+  const chunkSummaries: string[] = [];
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunkSummary = await requestSummary(chunks[index], `transcript chunk ${index + 1} of ${chunks.length}`);
+    chunkSummaries.push(
+      [
+        `Chunk ${index + 1}:`,
+        `TLDR: ${chunkSummary.tldr}`,
+        `Key Points: ${chunkSummary.keyPoints.join(" | ")}`,
+        `Details: ${chunkSummary.detailedSummary}`,
+      ].join("\n")
+    );
+  }
+
+  return requestSummary(chunkSummaries.join("\n\n"), "combined transcript summaries");
 }

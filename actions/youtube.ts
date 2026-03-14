@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { fetchTranscript, getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
+import { extractVideoId, fetchTranscript, getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
 import { summarizeTranscript } from "@/lib/groq";
 import { revalidatePath } from "next/cache";
 
@@ -11,6 +11,16 @@ type SummarizeResult =
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
   try {
+    const normalizedUrl = videoUrl.trim();
+
+    if (!normalizedUrl) {
+      return { success: false, error: "Please paste a YouTube URL." } satisfies SummarizeResult;
+    }
+
+    if (normalizedUrl.length > 500 || !extractVideoId(normalizedUrl)) {
+      return { success: false, error: "Please enter a valid YouTube video URL." } satisfies SummarizeResult;
+    }
+
     if (!process.env.GROQ_API_KEY) {
       return {
         success: false,
@@ -43,24 +53,39 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       return { success: false, error: "Rate limit exceeded. Please wait a few minutes and try again." } satisfies SummarizeResult;
     }
 
-    const transcript = await fetchTranscript(videoUrl);
+    const transcript = await fetchTranscript(normalizedUrl);
     if (!transcript) {
-      return { success: false, error: "Could not fetch captions for this video." } satisfies SummarizeResult;
+      return {
+        success: false,
+        error: "Could not fetch captions for this video. Make sure the video is public and has captions enabled.",
+      } satisfies SummarizeResult;
     }
 
     const { tldr, keyPoints, detailedSummary } = await summarizeTranscript(transcript);
-    const videoTitle = await getVideoTitle(videoUrl);
+    const videoTitle = await getVideoTitle(normalizedUrl);
 
-    const summary = `## TL;DR\n\n${tldr}\n\n## Detailed Summary\n\n${detailedSummary}`;
+    const summary = [
+      "## TLDR",
+      "",
+      tldr,
+      "",
+      "## Key Points",
+      "",
+      ...keyPoints.map((point) => `- ${point}`),
+      "",
+      "## Detailed Summary",
+      "",
+      detailedSummary,
+    ].join("\n");
 
     const { data, error } = await supabase
       .schema("app_notes")
       .from("youtube_summaries")
       .insert({
         user_id: user.id,
-        video_url: videoUrl,
+        video_url: normalizedUrl,
         video_title: videoTitle,
-        thumbnail_url: getVideoThumbnail(videoUrl),
+        thumbnail_url: getVideoThumbnail(normalizedUrl),
         summary,
         key_points: keyPoints,
       })

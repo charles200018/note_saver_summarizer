@@ -1,26 +1,10 @@
-import { Innertube } from "youtubei.js";
-import { getSubtitles } from "youtube-captions-scraper";
 import { YoutubeTranscript } from "youtube-transcript";
-
-export function extractVideoId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
 
 function normalizeCaptionText(text: string): string {
   return text
     .replace(/\s+/g, " ")
     .replace(/\u00a0/g, " ")
+    .replace(/<[^>]+>/g, " ")
     .trim();
 }
 
@@ -28,206 +12,81 @@ function collapseTranscript(lines: string[]): string {
   return lines.map((line) => normalizeCaptionText(line)).filter(Boolean).join(" ");
 }
 
-function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&nbsp;/g, " ");
-}
+export function extractVideoId(input: string): string | null {
+  const value = input.trim();
 
-// ---------------------------------------------------------------------------
-// Strategy 1: youtubei.js getInfo() → caption_tracks → fetch XML directly
-// getInfo() generates a properly authenticated Innertube session.
-// The resulting caption_tracks URLs work where raw timedtext URLs do not.
-// ---------------------------------------------------------------------------
-
-async function fetchTranscriptViaYoutubeijs(videoId: string): Promise<string> {
-  const yt = await Innertube.create({ generate_session_locally: true });
-  const info = await yt.getInfo(videoId);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const captionTracks: any[] = (info as any)?.captions?.caption_tracks ?? [];
-  if (captionTracks.length === 0) throw new Error("No caption tracks in video info");
-
-  // Prefer manual English over ASR (auto-generated) then any track
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const preferred: any =
-    captionTracks.find((t: any) => t.language_code?.startsWith("en") && t.kind !== "asr") ||
-    captionTracks.find((t: any) => t.language_code?.startsWith("en")) ||
-    captionTracks[0];
-
-  const captionUrl: string = preferred.base_url;
-  if (!captionUrl) throw new Error("Caption track has no URL");
-
-  const xmlRes = await fetch(captionUrl, { cache: "no-store" });
-  if (!xmlRes.ok) throw new Error(`Caption fetch failed: ${xmlRes.status}`);
-
-  const xml = await xmlRes.text();
-  const text = parseXmlTranscript(xml);
-  if (!text) throw new Error("Caption XML was empty");
-  return text;
-}
-
-// ---------------------------------------------------------------------------
-// Strategy 2: Scrape captionTracks from the YouTube watch page HTML
-// ---------------------------------------------------------------------------
-
-function extractCaptionTracksFromHtml(html: string): Array<{
-  baseUrl: string;
-  languageCode?: string;
-  kind?: string;
-}> {
-  const match = html.match(/"captionTracks":(\[[^\]]*\])/);
-  if (!match) return [];
   try {
-    const parsed = JSON.parse(match[1]) as Array<{
-      baseUrl: string;
-      languageCode?: string;
-      kind?: string;
-    }>;
-    return parsed.filter((t) => Boolean(t.baseUrl));
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "");
+
+    if (host === "youtu.be") {
+      const videoId = url.pathname.split("/").filter(Boolean)[0];
+      return videoId && videoId.length === 11 ? videoId : null;
+    }
+
+    if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) {
+      if (url.pathname === "/watch") {
+        const videoId = url.searchParams.get("v");
+        return videoId && videoId.length === 11 ? videoId : null;
+      }
+
+      if (url.pathname.startsWith("/shorts/") || url.pathname.startsWith("/embed/")) {
+        const videoId = url.pathname.split("/").filter(Boolean)[1];
+        return videoId && videoId.length === 11 ? videoId : null;
+      }
+    }
   } catch {
-    return [];
-  }
-}
-
-function parseXmlTranscript(xml: string): string {
-  const segments = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((m) =>
-    decodeHtmlEntities(m[1] || "")
-  );
-  return collapseTranscript(segments);
-}
-
-function parseVttTranscript(vtt: string): string {
-  const lines = vtt
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(
-      (line) =>
-        line &&
-        !line.startsWith("WEBVTT") &&
-        !line.includes("-->") &&
-        !/^\d+$/.test(line)
-    )
-    .map((line) => line.replace(/<[^>]+>/g, ""));
-  return collapseTranscript(lines);
-}
-
-async function fetchTranscriptViaDirectCaptionTracks(videoId: string): Promise<string> {
-  const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
-    headers: {
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "accept-language": "en-US,en;q=0.9",
-      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "cookie": "CONSENT=YES+1; SOCS=CAI",
-    },
-    cache: "no-store",
-  });
-
-  if (!watchResponse.ok) throw new Error("Unable to load YouTube page.");
-
-  const html = await watchResponse.text();
-  const tracks = extractCaptionTracksFromHtml(html);
-  if (tracks.length === 0) throw new Error("No caption tracks found in page HTML.");
-
-  const preferredTrack =
-    tracks.find((t) => t.languageCode?.toLowerCase().startsWith("en") && t.kind !== "asr") ||
-    tracks.find((t) => t.languageCode?.toLowerCase().startsWith("en")) ||
-    tracks[0];
-
-  const vttResponse = await fetch(`${preferredTrack.baseUrl}&fmt=vtt`, { cache: "no-store" });
-  if (vttResponse.ok) {
-    const vttTranscript = parseVttTranscript(await vttResponse.text());
-    if (vttTranscript) return vttTranscript;
+    const fallback = value.match(/([a-zA-Z0-9_-]{11})/);
+    return fallback?.[1] ?? null;
   }
 
-  const xmlResponse = await fetch(preferredTrack.baseUrl, { cache: "no-store" });
-  if (!xmlResponse.ok) throw new Error("Caption track download failed.");
-
-  const xmlTranscript = parseXmlTranscript(await xmlResponse.text());
-  if (xmlTranscript) return xmlTranscript;
-
-  throw new Error("Caption track was empty.");
+  return null;
 }
 
-// ---------------------------------------------------------------------------
-// Strategy 3: youtube-transcript npm package
-// ---------------------------------------------------------------------------
+function mapTranscriptError(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
-async function fetchTranscriptViaYoutubeTranscript(videoId: string): Promise<string> {
+  if (message.includes("disabled") || message.includes("caption") || message.includes("transcript")) {
+    return "This video does not have accessible captions, or transcript access is disabled.";
+  }
+
+  if (message.includes("private") || message.includes("unavailable") || message.includes("not found")) {
+    return "This video is unavailable, private, or cannot be read right now.";
+  }
+
+  return "Unable to fetch the transcript for this video right now. Please try another public video with captions.";
+}
+
+export async function fetchTranscript(videoUrl: string): Promise<string> {
+  const videoId = extractVideoId(videoUrl);
+  if (!videoId) {
+    throw new Error("Please enter a valid YouTube video URL.");
+  }
+
+  let lastError: unknown;
   for (const lang of ["en", "en-US", "en-GB"]) {
     try {
       const transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang });
       const text = collapseTranscript(transcript.map((line) => line.text || ""));
-      if (text) return text;
-    } catch {
-      // Try next language.
+      if (text) {
+        return text;
+      }
+    } catch (error) {
+      lastError = error;
     }
   }
 
   try {
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     const text = collapseTranscript(transcript.map((line) => line.text || ""));
-    if (text) return text;
-  } catch {
-    // Fall through.
-  }
-
-  throw new Error("youtube-transcript library failed.");
-}
-
-// ---------------------------------------------------------------------------
-// Strategy 4: youtube-captions-scraper npm package
-// ---------------------------------------------------------------------------
-
-async function fetchTranscriptViaCaptionsScraper(videoId: string): Promise<string> {
-  for (const lang of ["en", "en-US", "en-GB"]) {
-    try {
-      const subtitles = await getSubtitles({ videoID: videoId, lang });
-      const transcript = subtitles
-        .map((item) => normalizeCaptionText(item.text || ""))
-        .filter(Boolean)
-        .join(" ");
-      if (transcript) return transcript;
-    } catch {
-      // Try next language.
+    if (text) {
+      return text;
     }
-  }
-  throw new Error("youtube-captions-scraper library failed.");
-}
-
-// ---------------------------------------------------------------------------
-// Public entry point: try all strategies in order
-// ---------------------------------------------------------------------------
-
-export async function fetchTranscript(videoUrl: string): Promise<string> {
-  const videoId = extractVideoId(videoUrl);
-  if (!videoId) throw new Error("Invalid YouTube URL");
-
-  const strategies = [
-    () => fetchTranscriptViaYoutubeijs(videoId),
-    () => fetchTranscriptViaDirectCaptionTracks(videoId),
-    () => fetchTranscriptViaYoutubeTranscript(videoId),
-    () => fetchTranscriptViaCaptionsScraper(videoId),
-  ];
-
-  let lastError = "";
-  for (const strategy of strategies) {
-    try {
-      const text = await strategy();
-      if (text) return text;
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
+  } catch (error) {
+    lastError = error;
   }
 
-  throw new Error(
-    `Could not retrieve captions for this video. ${lastError} Ensure the video is public and has captions enabled.`
-  );
+  throw new Error(mapTranscriptError(lastError));
 }
 
 export function getVideoThumbnail(videoUrl: string): string {

@@ -5,6 +5,27 @@ import { summarizeYouTubeVideo } from "@/actions/youtube";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
+function isValidYouTubeUrl(input: string): boolean {
+  try {
+    const url = new URL(input);
+    const host = url.hostname.replace(/^www\./, "");
+
+    if (host === "youtu.be") {
+      return Boolean(url.pathname.split("/").filter(Boolean)[0]);
+    }
+
+    if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) {
+      return url.pathname === "/watch"
+        ? Boolean(url.searchParams.get("v"))
+        : url.pathname.startsWith("/shorts/") || url.pathname.startsWith("/embed/");
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 export function YouTubeInput() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,13 +34,19 @@ export function YouTubeInput() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return;
+
+    if (!isValidYouTubeUrl(trimmedUrl)) {
+      setError("Please paste a valid YouTube video URL.");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
     try {
-      const result = await summarizeYouTubeVideo(url.trim());
+      const result = await summarizeYouTubeVideo(trimmedUrl);
       if (!result.success) {
         setError(result.error);
         return;
@@ -72,7 +99,7 @@ export function YouTubeInput() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Processing...
+              Summarizing...
             </>
           ) : (
             "Summarize"
