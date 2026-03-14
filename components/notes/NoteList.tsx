@@ -57,7 +57,7 @@ export function NoteList({
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#606060]"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9c7a51]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -82,7 +82,7 @@ export function NoteList({
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className="luxury-input px-4 cursor-pointer"
+            className="luxury-input px-4 cursor-pointer text-[#f5e6d3]"
           >
             <option value="">All Tags</option>
             {allTags.map((tag) => (
@@ -96,7 +96,7 @@ export function NoteList({
 
       {filtered.length === 0 ? (
         <div className="luxury-card py-20 text-center">
-          <p className="text-[#606060] font-light tracking-wide">No notes found</p>
+          <p className="font-light tracking-wide text-[#b69b79]">No notes found</p>
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

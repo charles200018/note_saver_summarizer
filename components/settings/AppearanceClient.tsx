@@ -3,22 +3,17 @@
 import { useEffect, useState } from "react";
 
 const accentColors = [
-  { name: "Cobalt", value: "#2563eb" },
-  { name: "Royal Blue", value: "#1d4ed8" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Orange", value: "#f59e42" },
-  { name: "Red", value: "#ef4444" },
-  { name: "Green", value: "#10b981" },
-  { name: "Teal", value: "#14b8a6" },
-  { name: "Gold", value: "#eab308" },
+  { name: "Reserve Gold", value: "#c9a46c" },
+  { name: "Light Gold", value: "#e7cfa1" },
+  { name: "Bronze", value: "#b78952" },
+  { name: "Copper", value: "#9a633d" },
+  { name: "Espresso", value: "#7a4d2a" },
 ];
 
 const themes = [
-  { name: "Enterprise Dark", value: "dark" },
-  { name: "Midnight Cobalt", value: "midnight" },
-  { name: "Graphite Blue", value: "royal" },
-  { name: "Light", value: "light" },
+  { name: "Reserve Noir", value: "reserve" },
+  { name: "Espresso Luxe", value: "espresso" },
+  { name: "Bronze Velvet", value: "bronze" },
 ];
 
 export function AppearanceClient() {
@@ -44,13 +39,13 @@ export function AppearanceClient() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex items-center justify-between p-4 rounded-xl bg-[#0a0a0f]/50 border border-[#2a2a38]">
+      <div className="flex items-center justify-between rounded-xl border border-[#3a2617] bg-[#120b08]/75 p-4">
         <div>
-          <p className="text-[#e4e4e7] font-medium">Theme</p>
-          <p className="text-sm text-[#6b6560]">Choose your preferred color scheme</p>
+          <p className="font-medium text-[#f5e6d3]">Theme</p>
+          <p className="text-sm text-[#b69b79]">Choose your preferred luxury mood</p>
         </div>
         <select
-          className="px-4 py-2 rounded-lg bg-[#111118] border border-[#2a2a38] text-[#e4e4e7] focus:border-[#2563eb]/50 focus:outline-none"
+          className="rounded-lg border border-[#3a2617] bg-[#17100c] px-4 py-2 text-[#f5e6d3] focus:border-[#c9a46c]/50 focus:outline-none"
           value={theme}
           onChange={e => setTheme(e.target.value)}
         >
@@ -60,16 +55,16 @@ export function AppearanceClient() {
         </select>
       </div>
 
-      <div className="flex items-center justify-between p-4 rounded-xl bg-[#0a0a0f]/50 border border-[#2a2a38]">
+      <div className="flex items-center justify-between rounded-xl border border-[#3a2617] bg-[#120b08]/75 p-4">
         <div>
-          <p className="text-[#e4e4e7] font-medium">Accent Color</p>
-          <p className="text-sm text-[#6b6560]">Customize the accent color</p>
+          <p className="font-medium text-[#f5e6d3]">Accent Color</p>
+          <p className="text-sm text-[#b69b79]">Customize the metallic finish</p>
         </div>
         <div className="flex gap-2">
           {accentColors.map(c => (
             <button
               key={c.value}
-              className={`w-8 h-8 rounded-full border-2 ${accent === c.value ? "ring-2 ring-offset-2 ring-[var(--color-accent)] border-[var(--color-accent)]" : "border-[#2a2a38]"}`}
+              className={`h-8 w-8 rounded-full border-2 ${accent === c.value ? "ring-2 ring-offset-2 ring-[var(--color-accent)] ring-offset-[#120b08] border-[var(--color-accent)]" : "border-[#4a3220]"}`}
               style={{ background: c.value }}
               onClick={() => setAccent(c.value)}
               aria-label={c.name}

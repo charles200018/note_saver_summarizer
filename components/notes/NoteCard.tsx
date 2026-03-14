@@ -23,15 +23,14 @@ export function NoteCard({ note, onAddToFolder }: NoteCardProps) {
       animate={{ opacity: 1, y: 0 }}
       className="luxury-card group relative p-6"
     >
-      {/* Violet accent line */}
-      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[var(--color-accent)/30] to-transparent" />
+      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[var(--color-accent)/45] to-transparent" />
       
       <div className="flex items-start justify-between gap-3">
         <Link href={`/notes/${note.id}`} className="flex-1 min-w-0">
-          <h3 className="font-light text-[#e4e4e7] truncate text-lg tracking-wide">
+          <h3 className="font-[family-name:var(--font-serif)] text-2xl font-medium tracking-[0.05em] text-[#f5e6d3] truncate">
             {note.title || "Untitled"}
           </h3>
-          <p className="mt-2 text-sm text-[#a0a0a0] line-clamp-3 leading-relaxed">
+          <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[#c8b6a0]">
             {note.content.replace(/[#*`>\-]/g, "").slice(0, 150)}
           </p>
         </Link>
@@ -39,7 +38,7 @@ export function NoteCard({ note, onAddToFolder }: NoteCardProps) {
           {onAddToFolder && (
             <button
               onClick={() => onAddToFolder(note.id, note.title || "Untitled")}
-              className="rounded-lg p-2 text-[#606060] hover:text-[var(--color-accent)] transition-colors opacity-0 group-hover:opacity-100"
+              className="rounded-lg p-2 text-[#8f7049] transition-colors opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent)]"
               title="Add to collection"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +50,7 @@ export function NoteCard({ note, onAddToFolder }: NoteCardProps) {
             onClick={async () => {
               await togglePinNote(note.id, note.is_pinned);
             }}
-            className="rounded-lg p-2 text-[#606060] hover:text-[var(--color-accent)] transition-colors"
+            className="rounded-lg p-2 text-[#8f7049] transition-colors hover:text-[var(--color-accent)]"
           >
             <svg
               className="w-4 h-4"
@@ -75,7 +74,7 @@ export function NoteCard({ note, onAddToFolder }: NoteCardProps) {
           {note.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-[var(--color-accent)/10] px-3 py-1 text-xs font-light tracking-wider text-[var(--color-accent)] border border-[var(--color-accent)/20] uppercase"
+              className="rounded-full border border-[var(--color-accent)/24] bg-[#20140e] px-3 py-1 text-xs font-light uppercase tracking-[0.16em] text-[var(--color-accent-light)]"
             >
               {tag}
             </span>
@@ -83,7 +82,7 @@ export function NoteCard({ note, onAddToFolder }: NoteCardProps) {
         </div>
       )}
 
-      <p className="mt-4 text-xs text-[#606060] font-light tracking-wide uppercase">
+      <p className="mt-4 text-xs font-light uppercase tracking-[0.16em] text-[#b69b79]">
         {new Date(note.updated_at).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",

@@ -47,7 +47,7 @@ export function SummaryList({ summaries }: { summaries: Summary[] }) {
         </div>
       ) : (
         <div className="luxury-card py-20 text-center">
-          <p className="text-[#606060] text-sm font-light tracking-wide">
+          <p className="text-sm font-light tracking-wide text-[#b69b79]">
             No summaries yet. Paste a YouTube URL above to get started.
           </p>
         </div>

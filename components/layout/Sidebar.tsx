@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AuthButton } from "@/components/auth/AuthButton";
+import { SidebarNav } from "./SidebarNav";
 
 const mainNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: "grid" },
@@ -68,52 +69,28 @@ export async function Sidebar() {
   if (!user) return null;
 
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#232323] bg-gradient-to-b from-[#121212] via-[#0c0c0c] to-[#101010] lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#2a1a12] bg-[linear-gradient(180deg,#140c08_0%,#0f0906_55%,#0b0604_100%)] lg:flex">
       {/* Logo Section */}
-      <div className="flex h-20 items-center gap-3 border-b border-[#232323]/60 px-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-[#1d4ed8] flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
+      <div className="flex h-20 items-center gap-3 border-b border-[#2a1a12]/80 px-6">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#c9a46c]/45 bg-gradient-to-br from-[#2e1d13] to-[#140c08] shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
           {/* Diamond/Gem Icon */}
-          <svg className="w-5 h-5 text-[#0a0a0f]" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5 text-[#e7cfa1]" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 9l10 13 10-13L12 2zm0 3.84L18.26 9 12 17.65 5.74 9 12 5.84z"/>
           </svg>
         </div>
         <div className="flex flex-col">
-          <span className="text-lg font-semibold text-enterprise-gradient tracking-wider">AURELIUS</span>
-          <span className="text-[10px] text-[#6b6560] tracking-[0.3em] uppercase">Premium Notes</span>
+          <span className="font-[family-name:var(--font-serif)] text-lg font-semibold tracking-[0.18em] text-[#f1dab2]">AURELIUS</span>
+          <span className="text-[10px] uppercase tracking-[0.32em] text-[#9c7a51]">Premium Notes</span>
         </div>
       </div>
 
       {/* Main Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
-          <p className="px-3 mb-4 text-[10px] font-semibold text-[var(--color-accent)/60] uppercase tracking-[0.2em]">Main</p>
-        {mainNavItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#2563eb]/10"
-          >
-            <span className="text-[#6b6560] group-hover:text-[#2563eb] transition-colors duration-300">
-              {icons[item.icon]}
-            </span>
-            <span className="tracking-wide">{item.label}</span>
-          </Link>
-        ))}
+        <SidebarNav items={mainNavItems} icons={icons} title="Main" />
         
         {/* Tools Section */}
         <div className="pt-6">
-            <p className="px-3 mb-4 text-[10px] font-semibold text-[var(--color-accent)/60] uppercase tracking-[0.2em]">Tools</p>
-          {premiumFeatures.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#2563eb]/10"
-            >
-              <span className="text-[#6b6560] group-hover:text-[#2563eb] transition-colors duration-300">
-                {icons[item.icon]}
-              </span>
-              <span className="tracking-wide flex-1">{item.label}</span>
-            </Link>
-          ))}
+          <SidebarNav items={premiumFeatures} icons={icons} title="Tools" />
         </div>
       </nav>
 

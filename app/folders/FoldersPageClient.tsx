@@ -39,28 +39,48 @@ export default function FoldersPageClient({ email }: { email?: string }) {
   };
 
   return (
-    <div className="lg:ml-64">
+    <div className="dashboard-shell lg:ml-64">
       <TopNav title="Collections" email={email} />
       <main className="p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex items-center justify-between mb-8">
-            <p className="text-[#808080] font-light tracking-wide">
-              Organize your notes and YouTube summaries into collections
-            </p>
+        <div className="mx-auto max-w-6xl space-y-8">
+          <section className="section-panel rounded-3xl p-6 sm:p-8">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-[#c9a46c]">Curated Collections</p>
+                <h2 className="mt-3 font-[family-name:var(--font-serif)] text-3xl font-medium tracking-[0.06em] text-[#f5e6d3] sm:text-4xl">
+                  Organize your archive with a premium structure
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#c8b6a0]">
+                  Group notes and summaries into elegant collections designed for fast retrieval and calm focus.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="luxury-btn flex items-center gap-2 self-start"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                </svg>
+                New Collection
+              </button>
+            </div>
+          </section>
+
+          <section className="section-panel rounded-3xl p-5 sm:p-6">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="h-6 w-px rounded-full bg-gradient-to-b from-[#f1dab2] to-[#8d6a3d]" />
+              <h3 className="font-[family-name:var(--font-serif)] text-2xl font-medium tracking-[0.06em] text-[#f5e6d3]">Collection Index</h3>
+            </div>
             <button
-            onClick={() => setShowCreateModal(true)}
-            className="luxury-btn flex items-center gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-            </svg>
-            New Collection
-          </button>
-        </div>
+              onClick={() => setShowCreateModal(true)}
+              className="sr-only"
+            >
+              New Collection
+            </button>
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#c9a46c] border-t-transparent" />
           </div>
         ) : folders.length === 0 ? (
           <motion.div
@@ -68,9 +88,9 @@ export default function FoldersPageClient({ email }: { email?: string }) {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-24 text-center"
           >
-            <div className="mb-6 rounded-full bg-gradient-to-b from-[#1a1a1f] to-[#12121a] p-8 border border-[#2a2a2f]">
+            <div className="mb-6 rounded-full border border-[#3a2617] bg-gradient-to-b from-[#21150e] to-[#130c08] p-8">
               <svg
-                className="h-12 w-12 text-[var(--color-accent)]"
+                className="h-12 w-12 text-[#c9a46c]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -83,10 +103,10 @@ export default function FoldersPageClient({ email }: { email?: string }) {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-light text-[#e4e4e7] mb-3 tracking-wide">
+            <h2 className="mb-3 font-[family-name:var(--font-serif)] text-3xl font-medium tracking-[0.06em] text-[#f5e6d3]">
               No collections yet
             </h2>
-            <p className="text-[#808080] mb-8 max-w-md font-light leading-relaxed">
+            <p className="mb-8 max-w-md font-light leading-relaxed text-[#c8b6a0]">
               Create collections to organize your notes and YouTube summaries.
             </p>
             <button
@@ -110,6 +130,7 @@ export default function FoldersPageClient({ email }: { email?: string }) {
             ))}
           </div>
         )}
+          </section>
         </div>
       </main>
 

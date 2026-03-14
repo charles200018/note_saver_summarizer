@@ -14,19 +14,21 @@ export function AuthButton({ email }: { email: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#111118]/50 border border-[#1e1e28]">
+    <div className="rounded-2xl border border-[#3a2617] bg-[linear-gradient(180deg,#17100c_0%,#100907_100%)] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
+      <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center text-[#0a0a0f] font-semibold text-xs">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#e7cfa1] to-[#c9a46c] text-[#140c08] font-semibold text-xs">
           {email.charAt(0).toUpperCase()}
         </div>
-        <span className="text-xs text-[#a09a90] truncate flex-1">{email}</span>
+        <span className="flex-1 truncate text-xs text-[#c8b6a0]">{email}</span>
       </div>
       <button
         onClick={handleSignOut}
-        className="w-full rounded-lg bg-[#1e1e28] px-3 py-2 text-xs font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#2a2a38] transition-all duration-300 border border-[#2a2a38] hover:border-[var(--color-accent)/20] uppercase tracking-wider"
+        className="w-full rounded-xl border border-[#4a3220] bg-[#1a110d] px-3 py-2 text-xs font-medium uppercase tracking-[0.2em] text-[#e7cfa1] transition-all duration-300 hover:border-[#c9a46c]/55 hover:bg-[#22150f] hover:text-[#f5e6d3]"
       >
         Sign Out
       </button>
+      </div>
     </div>
   );
 }
