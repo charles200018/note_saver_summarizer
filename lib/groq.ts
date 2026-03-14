@@ -14,6 +14,24 @@ function normalizeText(input: string): string {
   return input.replace(/\s+/g, " ").trim();
 }
 
+function enforceFiveKeyPoints(points: string[]): string[] {
+  const cleaned = points.map((point) => normalizeText(point)).filter(Boolean);
+  if (cleaned.length >= 5) {
+    return cleaned.slice(0, 5);
+  }
+
+  if (cleaned.length === 0) {
+    return ["Main idea overview", "Core concept", "Important takeaway", "Practical implication", "Closing insight"];
+  }
+
+  const padded = [...cleaned];
+  while (padded.length < 5) {
+    padded.push(cleaned[padded.length % cleaned.length]);
+  }
+
+  return padded;
+}
+
 function splitTranscriptIntoChunks(transcript: string, maxChunkChars = MAX_CHARS_PER_CHUNK): string[] {
   const normalized = normalizeText(transcript);
   if (normalized.length <= maxChunkChars) {
@@ -64,9 +82,11 @@ function parseSummaryPayload(payload: string): TranscriptSummary {
 
   return {
     tldr: normalizeText(parsed.tldr || ""),
-    keyPoints: Array.isArray(parsed.keyPoints)
-      ? parsed.keyPoints.map((point) => normalizeText(String(point))).filter(Boolean)
-      : [],
+    keyPoints: enforceFiveKeyPoints(
+      Array.isArray(parsed.keyPoints)
+        ? parsed.keyPoints.map((point) => normalizeText(String(point))).filter(Boolean)
+        : []
+    ),
     detailedSummary: normalizeText(parsed.detailedSummary || ""),
   };
 }
@@ -91,14 +111,14 @@ async function requestSummary(content: string, contextLabel: string): Promise<Tr
         {
           role: "system",
           content:
-            "You summarize YouTube transcripts. Return only valid JSON with keys tldr, keyPoints, and detailedSummary. Keep tldr to exactly 2 sentences.",
+            "You summarize YouTube transcripts. Return only valid JSON with keys tldr, keyPoints, and detailedSummary.",
         },
         {
           role: "user",
           content: `Summarize the ${contextLabel} below. Requirements:
 - tldr: exactly 2 sentences
-- keyPoints: 4 to 6 short bullet-ready strings
-- detailedSummary: one clear paragraph
+- keyPoints: exactly 5 short bullet-ready strings
+- detailedSummary: 150 to 200 words in one clear paragraph
 - respond with JSON only using this exact shape:
 {
   "tldr": "",

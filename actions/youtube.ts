@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { extractVideoId, fetchCaptionTranscript, getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
+import { getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
+import { extractYouTubeVideoId, getTranscriptFromUrl } from "@/lib/youtubeTranscript";
 import { summarizeTranscript } from "@/lib/groq";
 import { revalidatePath } from "next/cache";
 
@@ -25,7 +26,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       return { success: false, error: "Please paste a YouTube URL." } satisfies SummarizeResult;
     }
 
-    if (normalizedUrl.length > 500 || !extractVideoId(normalizedUrl)) {
+    if (normalizedUrl.length > 500 || !extractYouTubeVideoId(normalizedUrl)) {
       return { success: false, error: "Please enter a valid YouTube video URL." } satisfies SummarizeResult;
     }
 
@@ -61,7 +62,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       return { success: false, error: "Rate limit exceeded. Please wait a few minutes and try again." } satisfies SummarizeResult;
     }
 
-    const { transcript } = await fetchCaptionTranscript(normalizedUrl);
+    const { transcript } = await getTranscriptFromUrl(normalizedUrl);
     if (!transcript) {
       return {
         success: false,

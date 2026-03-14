@@ -48,4 +48,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# downloaded caption/subtitle files
+*.vtt
+*.srt
+
+# local debug/test scripts
+/scripts/
+
 .vercel
