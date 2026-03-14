@@ -22,9 +22,9 @@ export default async function NoteDetailPage({ params, searchParams }: Props) {
 
   if (isEditing) {
     return (
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <TopNav title="Edit Note" email={user.email} />
-        <main className="p-8 max-w-3xl">
+        <main className="p-4 sm:p-6 lg:p-8 max-w-3xl">
           <NoteEditor note={note} />
         </main>
       </div>
@@ -32,9 +32,9 @@ export default async function NoteDetailPage({ params, searchParams }: Props) {
   }
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title={note.title} email={user.email} />
-      <main className="p-8 max-w-3xl">
+      <main className="p-4 sm:p-6 lg:p-8 max-w-3xl">
         <NoteViewClient note={note} />
       </main>
     </div>

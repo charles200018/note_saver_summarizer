@@ -13,9 +13,9 @@ export default async function YouTubePage() {
   const summaries = await getSummaries();
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="YouTube Summarizer" email={user.email} />
-      <main className="p-8 space-y-10 max-w-4xl">
+      <main className="p-4 sm:p-6 lg:p-8 space-y-10 max-w-4xl">
         <YouTubeInput />
 
         <section>

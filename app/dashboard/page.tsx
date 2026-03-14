@@ -12,16 +12,19 @@ export default async function DashboardPage() {
 
   const [{ data: notes }, { data: summaries }, { data: folders }] = await Promise.all([
     supabase
+      .schema("app_notes")
       .from("notes")
       .select("*")
       .order("updated_at", { ascending: false })
       .limit(6),
     supabase
+      .schema("app_notes")
       .from("youtube_summaries")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(4),
     supabase
+      .schema("app_notes")
       .from("folders")
       .select("*, folder_items(count)")
       .order("created_at", { ascending: false })
@@ -29,9 +32,9 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="Dashboard" email={user.email} />
-      <main className="p-8 space-y-10">
+      <main className="p-4 sm:p-6 lg:p-8 space-y-10">
         {/* Your Collections */}
         <section>
           <div className="flex items-center justify-between mb-6">

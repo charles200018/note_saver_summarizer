@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 
 export async function getNotes(search?: string, tag?: string) {
   const supabase = await createClient();
-  let query = supabase
+  const db = supabase.schema("app_notes");
+  let query = db
     .from("notes")
     .select("*")
     .order("is_pinned", { ascending: false })
@@ -28,6 +29,7 @@ export async function getNotes(search?: string, tag?: string) {
 export async function getNote(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
+    .schema("app_notes")
     .from("notes")
     .select("*")
     .eq("id", id)
@@ -50,6 +52,7 @@ export async function createNote(formData: FormData) {
     : [];
 
   const { data, error } = await supabase
+    .schema("app_notes")
     .from("notes")
     .insert({
       user_id: user.id,
@@ -75,6 +78,7 @@ export async function updateNote(id: string, formData: FormData) {
     : [];
 
   const { error } = await supabase
+    .schema("app_notes")
     .from("notes")
     .update({ title, content, tags })
     .eq("id", id);
@@ -87,7 +91,11 @@ export async function updateNote(id: string, formData: FormData) {
 
 export async function deleteNote(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("notes").delete().eq("id", id);
+  const { error } = await supabase
+    .schema("app_notes")
+    .from("notes")
+    .delete()
+    .eq("id", id);
 
   if (error) throw new Error(error.message);
   revalidatePath("/notes");
@@ -97,6 +105,7 @@ export async function deleteNote(id: string) {
 export async function togglePinNote(id: string, isPinned: boolean) {
   const supabase = await createClient();
   const { error } = await supabase
+    .schema("app_notes")
     .from("notes")
     .update({ is_pinned: !isPinned })
     .eq("id", id);
@@ -113,6 +122,7 @@ export async function smartSearch(query: string) {
 
   // Get all notes for this user
   const { data: notes, error } = await supabase
+    .schema("app_notes")
     .from("notes")
     .select("id, title, content, tags, created_at")
     .eq("user_id", user.id);
@@ -134,7 +144,7 @@ export async function smartSearch(query: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "meta-llama/llama-3.1-8b-instruct",
         messages: [
           {
             role: "system",
@@ -161,7 +171,7 @@ ${notesSummary}`
     });
 
     if (!response.ok) {
-      throw new Error("AI search failed");
+      throw new Error("Groq search failed");
     }
 
     const data = await response.json();

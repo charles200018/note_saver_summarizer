@@ -12,7 +12,7 @@ export default async function ImageToTextPage() {
   return (
     <div className="min-h-screen bg-[#08080c]">
       <Sidebar />
-      <main className="ml-64">
+      <main className="lg:ml-64">
         <TopNav title="Image to Text" email={user.email} />
         <ImageToTextClient />
       </main>

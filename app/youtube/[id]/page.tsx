@@ -17,9 +17,9 @@ export default async function SummaryDetailPage({ params }: Props) {
   const summary = await getSummary(id);
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="Summary" email={user.email} />
-      <main className="p-8 max-w-4xl">
+      <main className="p-4 sm:p-6 lg:p-8 max-w-4xl">
         <SummaryView summary={summary} />
       </main>
     </div>

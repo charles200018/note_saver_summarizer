@@ -2,13 +2,27 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { fetchTranscript, getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
-import { summarizeTranscript } from "@/lib/openrouter";
+import { summarizeTranscript } from "@/lib/groq";
 import { revalidatePath } from "next/cache";
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Basic per-user rate limit: max 5 summaries per rolling 10 minutes.
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { count, error: rateLimitError } = await supabase
+    .schema("app_notes")
+    .from("youtube_summaries")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", tenMinutesAgo);
+
+  if (rateLimitError) throw new Error(rateLimitError.message);
+  if ((count ?? 0) >= 5) {
+    throw new Error("Rate limit exceeded. Please wait a few minutes and try again.");
+  }
 
   // Fetch transcript
   const transcript = await fetchTranscript(videoUrl);
@@ -21,6 +35,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
 
   // Save to database
   const { data, error } = await supabase
+    .schema("app_notes")
     .from("youtube_summaries")
     .insert({
       user_id: user.id,
@@ -41,6 +56,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
 export async function getSummaries() {
   const supabase = await createClient();
   const { data, error } = await supabase
+    .schema("app_notes")
     .from("youtube_summaries")
     .select("*")
     .order("created_at", { ascending: false });
@@ -52,6 +68,7 @@ export async function getSummaries() {
 export async function getSummary(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
+    .schema("app_notes")
     .from("youtube_summaries")
     .select("*")
     .eq("id", id)
@@ -64,6 +81,7 @@ export async function getSummary(id: string) {
 export async function deleteSummary(id: string) {
   const supabase = await createClient();
   const { error } = await supabase
+    .schema("app_notes")
     .from("youtube_summaries")
     .delete()
     .eq("id", id);

@@ -38,7 +38,7 @@ export default async function HelpPage() {
   return (
     <div className="min-h-screen bg-[#08080c]">
       <Sidebar />
-      <main className="ml-64">
+      <main className="lg:ml-64">
         <TopNav title="Help & Support" email={user.email} />
         <div className="p-8">
           {/* Hero Section */}

@@ -17,9 +17,9 @@ export default async function NewNotePage({ searchParams }: Props) {
   const initialContent = typeof params.content === "string" ? params.content : undefined;
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="New Note" email={user.email} />
-      <main className="p-8 max-w-3xl">
+      <main className="p-4 sm:p-6 lg:p-8 max-w-3xl">
         <NoteEditor initialTitle={initialTitle} initialContent={initialContent} />
       </main>
     </div>

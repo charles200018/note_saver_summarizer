@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-64">
+      <main className="lg:ml-64">
         <TopNav title="Settings" email={user.email} />
         <div className="p-8">
           {/* Page Header */}

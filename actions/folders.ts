@@ -25,13 +25,14 @@ export interface FolderItem {
 // Get all folders for current user
 export async function getFolders(): Promise<Folder[]> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return [];
 
-  const { data: folders, error } = await supabase
+  const { data: folders, error } = await db
     .from("folders")
     .select("*")
     .eq("user_id", user.id)
@@ -45,7 +46,7 @@ export async function getFolders(): Promise<Folder[]> {
   // Get item counts for each folder
   const foldersWithCounts = await Promise.all(
     (folders || []).map(async (folder) => {
-      const { count } = await supabase
+      const { count } = await db
         .from("folder_items")
         .select("*", { count: "exact", head: true })
         .eq("folder_id", folder.id);
@@ -63,6 +64,7 @@ export async function createFolder(
   color: string = "#6366f1"
 ): Promise<{ success: boolean; folder?: Folder; error?: string }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -71,7 +73,7 @@ export async function createFolder(
     return { success: false, error: "Not authenticated" };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("folders")
     .insert({
       user_id: user.id,
@@ -96,6 +98,7 @@ export async function updateFolder(
   updates: { name?: string; description?: string; color?: string }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -104,7 +107,7 @@ export async function updateFolder(
     return { success: false, error: "Not authenticated" };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("folders")
     .update(updates)
     .eq("id", id)
@@ -123,6 +126,7 @@ export async function deleteFolder(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -131,7 +135,7 @@ export async function deleteFolder(
     return { success: false, error: "Not authenticated" };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("folders")
     .delete()
     .eq("id", id)
@@ -152,6 +156,7 @@ export async function addItemToFolder(
   itemId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -161,7 +166,7 @@ export async function addItemToFolder(
   }
 
   // Verify user owns the folder
-  const { data: folder } = await supabase
+  const { data: folder } = await db
     .from("folders")
     .select("id")
     .eq("id", folderId)
@@ -172,7 +177,7 @@ export async function addItemToFolder(
     return { success: false, error: "Folder not found" };
   }
 
-  const { error } = await supabase.from("folder_items").insert({
+  const { error } = await db.from("folder_items").insert({
     folder_id: folderId,
     item_type: itemType,
     item_id: itemId,
@@ -197,6 +202,7 @@ export async function removeItemFromFolder(
   itemId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -205,7 +211,7 @@ export async function removeItemFromFolder(
     return { success: false, error: "Not authenticated" };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("folder_items")
     .delete()
     .eq("folder_id", folderId)
@@ -241,6 +247,7 @@ export async function getFolderWithItems(folderId: string): Promise<{
   }>;
 }> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -250,7 +257,7 @@ export async function getFolderWithItems(folderId: string): Promise<{
   }
 
   // Get folder
-  const { data: folder } = await supabase
+  const { data: folder } = await db
     .from("folders")
     .select("*")
     .eq("id", folderId)
@@ -262,7 +269,7 @@ export async function getFolderWithItems(folderId: string): Promise<{
   }
 
   // Get folder items
-  const { data: items } = await supabase
+  const { data: items } = await db
     .from("folder_items")
     .select("*")
     .eq("folder_id", folderId);
@@ -283,7 +290,7 @@ export async function getFolderWithItems(folderId: string): Promise<{
     tags: string[];
   }> = [];
   if (noteIds.length > 0) {
-    const { data } = await supabase
+    const { data } = await db
       .from("notes")
       .select("id, title, content, created_at, tags")
       .in("id", noteIds);
@@ -300,7 +307,7 @@ export async function getFolderWithItems(folderId: string): Promise<{
     created_at: string;
   }> = [];
   if (summaryIds.length > 0) {
-    const { data } = await supabase
+    const { data } = await db
       .from("youtube_summaries")
       .select("id, video_url, video_title, thumbnail_url, summary, created_at")
       .in("id", summaryIds);
@@ -316,13 +323,14 @@ export async function getFoldersContainingItem(
   itemId: string
 ): Promise<string[]> {
   const supabase = await createClient();
+  const db = supabase.schema("app_notes");
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return [];
 
-  const { data } = await supabase
+  const { data } = await db
     .from("folder_items")
     .select("folder_id")
     .eq("item_type", itemType)

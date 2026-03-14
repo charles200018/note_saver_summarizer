@@ -39,9 +39,9 @@ export default function FoldersPageClient({ email }: { email?: string }) {
   };
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="Collections" email={email} />
-      <main className="p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-center justify-between mb-8">
             <p className="text-[#808080] font-light tracking-wide">

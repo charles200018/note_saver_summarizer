@@ -5,11 +5,11 @@
   --font-mono: var(--font-geist-mono);
   
   /* Premium Luxury Color Palette */
-  --color-midnight: #08080c;
-  --color-obsidian: #0e0e14;
-  --color-onyx: #14141c;
-  --color-charcoal: #1a1a24;
-  --color-slate: #24242f;
+  --color-midnight: #0a0a0a;
+  --color-obsidian: #101010;
+  --color-onyx: #141414;
+  --color-charcoal: #1b1b1b;
+  --color-slate: #262626;
   
   /* Violet & Premium Tones */
   --color-accent: #8b5cf6;
@@ -28,7 +28,7 @@
 }
 
 body {
-  background: linear-gradient(180deg, #08080c 0%, #0c0c12 50%, #08080c 100%);
+  background: linear-gradient(180deg, #0a0a0a 0%, #0d0d0d 50%, #0a0a0a 100%);
   color: #e8e4dc;
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
@@ -51,15 +51,15 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0f;
+  background: #0b0b0b;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #2a2a38 0%, #1e1e28 100%);
+  background: linear-gradient(180deg, #2b2b2b 0%, #222222 100%);
   border-radius: 4px;
-  border: 1px solid #333340;
+  border: 1px solid #343434;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #3a3a48 0%, #2e2e38 100%);
+  background: linear-gradient(180deg, #3a3a3a 0%, #303030 100%);
 }
 
 /* Premium Violet Glow Effects */
@@ -77,7 +77,7 @@ body {
 
 /* Luxury Card Effect */
 .luxury-card {
-  background: linear-gradient(145deg, #111118 0%, #0d0d14 100%);
+  background: linear-gradient(145deg, #121212 0%, #0f0f0f 100%);
   border: 1px solid rgba(139, 92, 246, 0.1);
   box-shadow: 
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
@@ -120,7 +120,7 @@ body {
 
 /* Premium Input */
 .luxury-input {
-  background: #111118;
+  background: #121212;
   border: 1px solid rgba(139, 92, 246, 0.15);
   transition: all 0.3s ease;
 }
@@ -145,7 +145,7 @@ body {
 
 /* Premium Glass Effect */
 .glass-effect {
-  background: rgba(14, 14, 20, 0.7);
+  background: rgba(10, 10, 10, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(201, 162, 39, 0.1);
@@ -199,7 +199,7 @@ body {
 /* Premium Feature Card */
 .premium-feature-card {
   position: relative;
-  background: linear-gradient(145deg, #0e0e14 0%, #0a0a10 100%);
+  background: linear-gradient(145deg, #121212 0%, #0e0e0e 100%);
   border: 1px solid rgba(201, 162, 39, 0.15);
   border-radius: 1rem;
   overflow: hidden;

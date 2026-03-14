@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notes Saver + AI YouTube Summarizer
 
-## Getting Started
+Next.js 16 application with Supabase Auth + Postgres + Storage, designed for safe use in a shared Supabase instance.
 
-First, run the development server:
+## Architecture Highlights
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Isolated app schema: `app_notes`
+- Strict RLS policies bound to `auth.uid() = user_id`
+- Private storage buckets with user-path ownership checks
+- Route protection through Next.js `proxy.ts`
+- OAuth callback hardened for Vercel deployments
+- Server-only use of sensitive environment variables
+
+## Environment Variables
+
+Required:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+- `GROQ_API_KEY` (server-only)
+- `NEXT_PUBLIC_SITE_URL` (recommended)
+
+## Migration Structure
+
+```text
+supabase/
+  migrations/
+    001_create_schema.sql
+    002_notes_table.sql
+    003_youtube_table.sql
+    004_rls_policies.sql
+    005_folders_tables.sql
+    006_folder_policies.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run Migrations Safely
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Option A: Supabase SQL Editor
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Open SQL Editor in your Supabase project.
+2. Run each migration file in order from `001` to `006`.
+3. Verify all app tables exist only in `app_notes` schema.
 
-## Learn More
+Option B: Supabase CLI
 
-To learn more about Next.js, take a look at the following resources:
+1. Link project: `supabase link --project-ref <project-ref>`
+2. Push migrations: `supabase db push`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Auth Flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Unauthenticated requests to `/dashboard`, `/notes/*`, `/youtube/*` are redirected to `/login`.
+- Login uses Supabase OAuth with callback at `/auth/callback`.
+- Callback exchanges code for session and redirects safely to a validated `next` path.
 
-## Deploy on Vercel
+## Storage Ownership Convention
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+All objects must be uploaded with key format:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+<user_id>/<filename>
+```
+
+Policies only allow access where first path segment equals the authenticated user id.
+
+## App Tables In Shared Supabase
+
+All application-owned tables now live in `app_notes`:
+
+- `notes`
+- `youtube_summaries`
+- `folders`
+- `folder_items`

@@ -12,7 +12,7 @@ export default async function SmartSearchPage() {
   return (
     <div className="min-h-screen bg-[#08080c]">
       <Sidebar />
-      <main className="ml-64">
+      <main className="lg:ml-64">
         <TopNav title="Smart Search" email={user.email} />
         <SmartSearchClient />
       </main>

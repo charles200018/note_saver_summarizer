@@ -68,9 +68,9 @@ export async function Sidebar() {
   if (!user) return null;
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-gradient-to-b from-[#0d0d14] via-[#0a0a0f] to-[#0d0d14] border-r border-[#1e1e28]">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#232323] bg-gradient-to-b from-[#121212] via-[#0c0c0c] to-[#101010] lg:flex">
       {/* Logo Section */}
-      <div className="flex h-20 items-center gap-3 px-6 border-b border-[#1e1e28]/50">
+      <div className="flex h-20 items-center gap-3 border-b border-[#232323]/60 px-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] via-[#a78bfa] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#8b5cf6]/30">
           {/* Diamond/Gem Icon */}
           <svg className="w-5 h-5 text-[#0a0a0f]" fill="currentColor" viewBox="0 0 24 24">

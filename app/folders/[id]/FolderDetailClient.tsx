@@ -83,7 +83,7 @@ export default function FolderDetailClient({ id, email }: FolderDetailClientProp
 
   if (loading) {
     return (
-      <div className="ml-64 flex min-h-screen items-center justify-center">
+      <div className="lg:ml-64 flex min-h-screen items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
       </div>
     );
@@ -91,7 +91,7 @@ export default function FolderDetailClient({ id, email }: FolderDetailClientProp
 
   if (!data.folder) {
     return (
-      <div className="ml-64 flex min-h-screen flex-col items-center justify-center">
+      <div className="lg:ml-64 flex min-h-screen flex-col items-center justify-center">
         <h1 className="text-2xl font-light text-[#e4e4e7] mb-4 tracking-wide">Collection not found</h1>
         <Link href="/folders" className="text-[var(--color-accent)] hover:text-[#e4e4e7] font-light tracking-wide">
           Back to Collections
@@ -103,9 +103,9 @@ export default function FolderDetailClient({ id, email }: FolderDetailClientProp
   const totalItems = data.notes.length + data.summaries.length;
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title={data.folder.name} email={email} />
-      <main className="p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-6xl">
           {/* Header */}
           <div className="mb-10">

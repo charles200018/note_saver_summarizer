@@ -1,18 +1,32 @@
-Quick Vercel deployment guide for this Next.js app
+Secure Vercel deployment guide for this Next.js 16 + Supabase app
 
-1) Push your repository to GitHub/GitLab/Bitbucket.
+1) Import repo into Vercel.
 
-2) Create a Vercel account and import the repo (Vercel auto-detects Next.js).
+2) Configure environment variables in Vercel Project Settings.
+  - Public (safe for browser):
+    - NEXT_PUBLIC_SUPABASE_URL
+    - NEXT_PUBLIC_SUPABASE_ANON_KEY
+    - NEXT_PUBLIC_SITE_URL
+  - Server-only secrets:
+    - SUPABASE_SERVICE_ROLE_KEY
+    - GROQ_API_KEY
 
-3) Set required environment variables in the Vercel Project Settings > Environment Variables.
-   - Example env names used by this project (set your values):
-     - NEXT_PUBLIC_SUPABASE_URL
-     - NEXT_PUBLIC_SUPABASE_ANON_KEY
-     - SUPABASE_SERVICE_ROLE_KEY
-     - OPENROUTER_API_KEY (if used)
-     - Any other API keys you added to `process.env` in the app
+3) Ensure server-only secrets are never referenced in client components.
+  - In Next.js, only variables prefixed with NEXT_PUBLIC_ are bundled into the browser.
 
-4) (Optional) Install and use the Vercel CLI to deploy from your machine:
+4) Add OAuth redirect URLs in Supabase Auth settings:
+  - https://<your-production-domain>/auth/callback
+  - http://localhost:3000/auth/callback
+
+5) Run SQL migrations before or during first deployment:
+  - supabase/migrations/001_create_schema.sql
+  - supabase/migrations/002_notes_table.sql
+  - supabase/migrations/003_youtube_table.sql
+  - supabase/migrations/004_rls_policies.sql
+  - supabase/migrations/005_folders_tables.sql
+  - supabase/migrations/006_folder_policies.sql
+
+6) Deploy with Git integration or CLI:
 
 ```bash
 npm install -g vercel
@@ -20,12 +34,8 @@ vercel login
 vercel --prod
 ```
 
-5) If you prefer Git-based deploys, Vercel will create preview deployments on every PR and a Production deployment on the main branch.
-
-Notes & tips
-- Vercel Hobby (free) allows unlimited projects but has quotas for build minutes, bandwidth, and serverless function usage — upgrade if you exceed them.
-- For server-side features that require secrets, add them as Project Environment Variables (do not commit secrets in code).
-- If you need to customize builds or routes, add a `vercel.json` (example included).
-
-Files added by this guide:
-- `vercel.json` (minimal config).
+7) Validate after deploy:
+  - /dashboard, /notes, /youtube redirect to /login when signed out.
+  - OAuth returns to /auth/callback then /dashboard.
+  - Data access works only for owner due to RLS.
+  - Storage object paths follow: <user_id>/<filename>.

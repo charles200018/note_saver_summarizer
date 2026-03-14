@@ -17,9 +17,9 @@ export default async function NotesPage() {
   ).sort();
 
   return (
-    <div className="ml-64">
+    <div className="lg:ml-64">
       <TopNav title="Notes" email={user.email} />
-      <main className="p-8">
+      <main className="p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <p className="text-sm text-[#808080] font-light tracking-wide">{notes.length} notes</p>
           <Link

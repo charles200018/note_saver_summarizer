@@ -10,7 +10,7 @@ export async function summarizeTranscript(transcript: string): Promise<{
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: "meta-llama/llama-3.1-8b-instruct",
       messages: [
         {
           role: "system",
@@ -43,7 +43,6 @@ ${transcript.slice(0, 12000)}`,
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content ?? "";
 
-  // Extract JSON from the response (handle markdown code blocks)
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("Failed to parse AI response as JSON");
