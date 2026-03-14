@@ -116,6 +116,10 @@ export async function togglePinNote(id: string, isPinned: boolean) {
 }
 
 export async function smartSearch(query: string) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is missing in deployment environment variables.");
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");

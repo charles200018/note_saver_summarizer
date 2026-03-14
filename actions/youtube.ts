@@ -6,6 +6,10 @@ import { summarizeTranscript } from "@/lib/groq";
 import { revalidatePath } from "next/cache";
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is missing in deployment environment variables.");
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -30,6 +34,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
 
   // Summarize with AI
   const { tldr, keyPoints, detailedSummary } = await summarizeTranscript(transcript);
+  const videoTitle = await getVideoTitle(videoUrl);
 
   const summary = `## TL;DR\n\n${tldr}\n\n## Detailed Summary\n\n${detailedSummary}`;
 
@@ -40,7 +45,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
     .insert({
       user_id: user.id,
       video_url: videoUrl,
-      video_title: getVideoTitle(videoUrl),
+      video_title: videoTitle,
       thumbnail_url: getVideoThumbnail(videoUrl),
       summary,
       key_points: keyPoints,

@@ -3,6 +3,10 @@ export async function summarizeTranscript(transcript: string): Promise<{
   keyPoints: string[];
   detailedSummary: string;
 }> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is missing in deployment environment variables.");
+  }
+
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
