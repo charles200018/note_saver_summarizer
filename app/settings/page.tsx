@@ -27,9 +27,9 @@ export default async function SettingsPage() {
           <div className="grid gap-6 max-w-4xl">
             {/* Profile Section */}
             <section className="rounded-2xl bg-gradient-to-br from-[#111118] to-[#0d0d14] border border-[#1e1e28] overflow-hidden">
-              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#8b5cf6]/5 to-transparent">
+              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#2563eb]/5 to-transparent">
                 <h3 className="text-lg font-medium text-[#e4e4e7] tracking-wide flex items-center gap-3">
-                  <svg className="w-5 h-5 text-[#8b5cf6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[#2563eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Profile
@@ -37,13 +37,13 @@ export default async function SettingsPage() {
               </div>
               <div className="p-6 space-y-6">
                 <div className="flex items-center gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#8b5cf6] via-[#a78bfa] to-[#7c3aed] flex items-center justify-center text-[#0a0a0f] font-bold text-2xl shadow-lg shadow-[#8b5cf6]/30">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-[#1d4ed8] flex items-center justify-center text-[#0a0a0f] font-bold text-2xl shadow-lg shadow-[#2563eb]/30">
                     {user.email?.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-lg font-medium text-[#e4e4e7]">{user.email?.split('@')[0]}</p>
                     <p className="text-sm text-[#6b6560]">{user.email}</p>
-                    <p className="text-xs text-[#8b5cf6] mt-2 tracking-wide uppercase">Active Member</p>
+                    <p className="text-xs text-[#2563eb] mt-2 tracking-wide uppercase">Active Member</p>
                   </div>
                 </div>
 
@@ -53,7 +53,7 @@ export default async function SettingsPage() {
                     <input 
                       type="text" 
                       defaultValue={user.email?.split('@')[0]}
-                      className="w-full px-4 py-3 rounded-xl bg-[#0a0a0f] border border-[#2a2a38] text-[#e4e4e7] placeholder-[#4a4a50] focus:border-[#8b5cf6]/50 focus:outline-none transition-all duration-300"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0a0a0f] border border-[#2a2a38] text-[#e4e4e7] placeholder-[#4a4a50] focus:border-[#2563eb]/50 focus:outline-none transition-all duration-300"
                     />
                   </div>
                   <div>
@@ -71,9 +71,9 @@ export default async function SettingsPage() {
 
             {/* Appearance Section */}
             <section id="appearance" className="rounded-2xl bg-gradient-to-br from-[#111118] to-[#0d0d14] border border-[#1e1e28] overflow-hidden">
-              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#8b5cf6]/5 to-transparent">
+              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#2563eb]/5 to-transparent">
                 <h3 className="text-lg font-medium text-[#e4e4e7] tracking-wide flex items-center gap-3">
-                  <svg className="w-5 h-5 text-[#8b5cf6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[#2563eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
                   Appearance
@@ -86,16 +86,16 @@ export default async function SettingsPage() {
 
             {/* AI Status Section */}
             <section className="rounded-2xl bg-gradient-to-br from-[#111118] to-[#0d0d14] border border-[#1e1e28] overflow-hidden">
-              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#8b5cf6]/5 to-transparent">
+              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#2563eb]/5 to-transparent">
                 <h3 className="text-lg font-medium text-[#e4e4e7] tracking-wide flex items-center gap-3">
-                  <svg className="w-5 h-5 text-[#8b5cf6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[#2563eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                   AI Features
                 </h3>
               </div>
               <div className="p-6 space-y-4">
-                <div className="p-4 rounded-xl bg-gradient-to-r from-[#8b5cf6]/10 to-transparent border border-[#8b5cf6]/20">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-[#2563eb]/10 to-transparent border border-[#2563eb]/20">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-sm font-medium text-[#e4e4e7]">AI Features Active</span>
@@ -146,9 +146,9 @@ export default async function SettingsPage() {
 
             {/* Storage & Data */}
             <section className="rounded-2xl bg-gradient-to-br from-[#111118] to-[#0d0d14] border border-[#1e1e28] overflow-hidden">
-              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#8b5cf6]/5 to-transparent">
+              <div className="p-6 border-b border-[#1e1e28] bg-gradient-to-r from-[#2563eb]/5 to-transparent">
                 <h3 className="text-lg font-medium text-[#e4e4e7] tracking-wide flex items-center gap-3">
-                  <svg className="w-5 h-5 text-[#8b5cf6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[#2563eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
                   </svg>
                   Storage & Data
@@ -160,10 +160,10 @@ export default async function SettingsPage() {
                     <p className="text-[#e4e4e7] font-medium">Storage Used</p>
                     <p className="text-sm text-[#6b6560]">Your current data usage</p>
                   </div>
-                  <span className="text-[#8b5cf6] font-medium">24.5 MB / 5 GB</span>
+                  <span className="text-[#2563eb] font-medium">24.5 MB / 5 GB</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#1e1e28] overflow-hidden">
-                  <div className="h-full w-[5%] rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#a78bfa]" />
+                  <div className="h-full w-[5%] rounded-full bg-gradient-to-r from-[#2563eb] to-[#60a5fa]" />
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4 pt-4">
@@ -185,7 +185,7 @@ export default async function SettingsPage() {
 
             {/* Save Button */}
             <div className="flex justify-end pt-4">
-              <button className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] text-[#0a0a0f] font-semibold tracking-wide uppercase hover:shadow-lg hover:shadow-[#8b5cf6]/30 transition-all duration-300 hover:-translate-y-0.5">
+              <button className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-[#0a0a0f] font-semibold tracking-wide uppercase hover:shadow-lg hover:shadow-[#2563eb]/30 transition-all duration-300 hover:-translate-y-0.5">
                 Save Changes
               </button>
             </div>

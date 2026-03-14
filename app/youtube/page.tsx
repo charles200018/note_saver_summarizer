@@ -26,7 +26,7 @@ export default async function YouTubePage() {
             <span className="text-sm font-light text-[#606060] tracking-wider">
               {summaries.length} summaries
             </span>
-            <div className="flex-1 h-px bg-gradient-to-r from-[#8b5cf6]/30 to-transparent" />
+            <div className="flex-1 h-px bg-gradient-to-r from-[#2563eb]/30 to-transparent" />
           </div>
           <SummaryList summaries={summaries} />
         </section>

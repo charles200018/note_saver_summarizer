@@ -34,7 +34,7 @@ export function AccountDropdown({ email }: { email: string }) {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[#111118]/60 border border-[#2a2a38] hover:border-[var(--color-accent)/30] transition-all duration-300 group"
       >
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--color-accent)] via-[#a78bfa] to-[#7c3aed] flex items-center justify-center text-[#0a0a0f] font-bold text-sm shadow-lg shadow-[var(--color-accent)/20]">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--color-accent)] via-[#60a5fa] to-[#1d4ed8] flex items-center justify-center text-[#0a0a0f] font-bold text-sm shadow-lg shadow-[var(--color-accent)/20]">
           {email.charAt(0).toUpperCase()}
         </div>
         <div className="hidden md:block text-left">
@@ -55,7 +55,7 @@ export function AccountDropdown({ email }: { email: string }) {
           {/* Header */}
           <div className="p-4 border-b border-[#2a2a38]/50 bg-gradient-to-r from-[var(--color-accent)/5] to-transparent">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)] via-[#a78bfa] to-[#7c3aed] flex items-center justify-center text-[#0a0a0f] font-bold text-lg shadow-lg shadow-[var(--color-accent)/30]">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)] via-[#60a5fa] to-[#1d4ed8] flex items-center justify-center text-[#0a0a0f] font-bold text-lg shadow-lg shadow-[var(--color-accent)/30]">
                 {email.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -84,7 +84,7 @@ export function AccountDropdown({ email }: { email: string }) {
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-200 group"
             >
-              <svg className="w-5 h-5 text-[#6b6560] group-hover:text-[#8b5cf6] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#6b6560] group-hover:text-[#2563eb] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
               </svg>
               <span className="text-sm tracking-wide">Appearance</span>
@@ -97,7 +97,7 @@ export function AccountDropdown({ email }: { email: string }) {
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-200 group"
             >
-              <svg className="w-5 h-5 text-[#6b6560] group-hover:text-[#8b5cf6] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#6b6560] group-hover:text-[#2563eb] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-sm tracking-wide">Help & Support</span>

@@ -108,7 +108,7 @@ export default function ImageToTextClient() {
       <div className="grid lg:grid-cols-2 gap-8 max-w-6xl">
         <div className="premium-feature-card p-6">
           <h3 className="text-lg font-light text-[#e4e4e7] mb-6 tracking-wide flex items-center gap-3">
-            <svg className="w-5 h-5 text-[#7c3aed]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#1d4ed8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             Upload Image
@@ -122,8 +122,8 @@ export default function ImageToTextClient() {
               onClick={() => fileInputRef.current?.click()}
               className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all duration-300 p-12 text-center ${
                 isDragging 
-                  ? "border-[#7c3aed] bg-[#7c3aed]/5" 
-                  : "border-[#2a2a38] hover:border-[#7c3aed]/50 hover:bg-[#0e0e14]"
+                  ? "border-[#1d4ed8] bg-[#1d4ed8]/5" 
+                  : "border-[#2a2a38] hover:border-[#1d4ed8]/50 hover:bg-[#0e0e14]"
               }`}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
@@ -136,7 +136,7 @@ export default function ImageToTextClient() {
                 className="hidden"
               />
               <div className="mb-4 inline-flex rounded-full bg-gradient-to-b from-[#1a1a24] to-[#0e0e14] p-6 border border-[#2a2a38]">
-                <svg className="w-10 h-10 text-[#7c3aed]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-10 h-10 text-[#1d4ed8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
               </div>
@@ -152,11 +152,11 @@ export default function ImageToTextClient() {
                 {isProcessing && (
                   <div className="absolute inset-0 bg-[#08080c]/90 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-16 h-16 border-2 border-[#7c3aed] border-t-transparent rounded-full animate-spin mb-4 mx-auto" />
-                      <p className="text-[#7c3aed] text-sm tracking-wide mb-2">Extracting text...</p>
+                      <div className="w-16 h-16 border-2 border-[#1d4ed8] border-t-transparent rounded-full animate-spin mb-4 mx-auto" />
+                      <p className="text-[#1d4ed8] text-sm tracking-wide mb-2">Extracting text...</p>
                       <div className="w-48 h-2 rounded-full bg-[#1a1a24] overflow-hidden mx-auto">
                         <div 
-                          className="h-full bg-gradient-to-r from-[#7c3aed] to-[#e5c454] transition-all duration-300"
+                          className="h-full bg-gradient-to-r from-[#1d4ed8] to-[#14b8a6] transition-all duration-300"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
@@ -199,7 +199,7 @@ export default function ImageToTextClient() {
 
         <div className="premium-feature-card p-6">
           <h3 className="text-lg font-light text-[#e4e4e7] mb-6 tracking-wide flex items-center gap-3">
-            <svg className="w-5 h-5 text-[#7c3aed]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#1d4ed8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Extracted Text
@@ -213,7 +213,7 @@ export default function ImageToTextClient() {
               <div className="flex gap-3">
                 <button 
                   onClick={copyToClipboard}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#9a7b1a] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#7c3aed]/30 transition-all duration-300 flex items-center justify-center gap-2"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#1d4ed8]/30 transition-all duration-300 flex items-center justify-center gap-2"
                 >
                   {copied ? (
                     <>
@@ -263,7 +263,7 @@ export default function ImageToTextClient() {
               transition={{ delay: idx * 0.1 }}
               className="p-6 rounded-xl bg-[#0e0e14] border border-[#1a1a24]"
             >
-              <span className="text-3xl font-light text-[#7c3aed]/30">{item.step}</span>
+              <span className="text-3xl font-light text-[#1d4ed8]/30">{item.step}</span>
               <h4 className="text-lg font-light text-[#e4e4e7] mt-2 mb-2">{item.title}</h4>
               <p className="text-sm text-[#606060] font-light">{item.desc}</p>
             </motion.div>

@@ -53,8 +53,8 @@ export default async function HelpPage() {
             {/* Quick Links */}
             <div className="grid md:grid-cols-3 gap-5 mb-12">
               <div className="premium-feature-card p-6 text-center hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div className="w-14 h-14 rounded-xl bg-[#7c3aed]/10 flex items-center justify-center mx-auto mb-4 border border-[#7c3aed]/20">
-                  <svg className="w-7 h-7 text-[#7c3aed]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-14 h-14 rounded-xl bg-[#1d4ed8]/10 flex items-center justify-center mx-auto mb-4 border border-[#1d4ed8]/20">
+                  <svg className="w-7 h-7 text-[#1d4ed8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
@@ -73,8 +73,8 @@ export default async function HelpPage() {
               </div>
 
               <div className="premium-feature-card p-6 text-center hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div className="w-14 h-14 rounded-xl bg-[#9333ea]/10 flex items-center justify-center mx-auto mb-4 border border-[#9333ea]/20">
-                  <svg className="w-7 h-7 text-[#9333ea]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-14 h-14 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center mx-auto mb-4 border border-[#3b82f6]/20">
+                  <svg className="w-7 h-7 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
@@ -90,7 +90,7 @@ export default async function HelpPage() {
                 {faqs.map((faq, idx) => (
                   <div key={idx} className="premium-feature-card p-6">
                     <h4 className="text-[#e4e4e7] font-medium mb-3 flex items-start gap-3">
-                      <span className="text-[#7c3aed]">Q:</span>
+                      <span className="text-[#1d4ed8]">Q:</span>
                       {faq.q}
                     </h4>
                     <p className="text-[#808080] font-light pl-6 leading-relaxed">{faq.a}</p>
@@ -103,7 +103,7 @@ export default async function HelpPage() {
             <div className="mt-12 premium-feature-card p-8 text-center">
               <h3 className="text-xl font-light text-[#e4e4e7] mb-3">Still need help?</h3>
               <p className="text-[#606060] font-light mb-6">Our support team is here to assist you</p>
-              <button className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#9a7b1a] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#7c3aed]/30 transition-all duration-300">
+              <button className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#1d4ed8]/30 transition-all duration-300">
                 Contact Support
               </button>
             </div>

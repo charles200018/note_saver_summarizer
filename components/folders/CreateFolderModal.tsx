@@ -30,7 +30,7 @@ export function CreateFolderModal({
 }: CreateFolderModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [color, setColor] = useState("#8b5cf6");
+  const [color, setColor] = useState("#2563eb");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 

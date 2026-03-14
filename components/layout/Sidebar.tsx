@@ -71,14 +71,14 @@ export async function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#232323] bg-gradient-to-b from-[#121212] via-[#0c0c0c] to-[#101010] lg:flex">
       {/* Logo Section */}
       <div className="flex h-20 items-center gap-3 border-b border-[#232323]/60 px-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] via-[#a78bfa] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#8b5cf6]/30">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-[#1d4ed8] flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
           {/* Diamond/Gem Icon */}
           <svg className="w-5 h-5 text-[#0a0a0f]" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 9l10 13 10-13L12 2zm0 3.84L18.26 9 12 17.65 5.74 9 12 5.84z"/>
           </svg>
         </div>
         <div className="flex flex-col">
-          <span className="text-lg font-semibold text-violet-gradient tracking-wider">AURELIUS</span>
+          <span className="text-lg font-semibold text-enterprise-gradient tracking-wider">AURELIUS</span>
           <span className="text-[10px] text-[#6b6560] tracking-[0.3em] uppercase">Premium Notes</span>
         </div>
       </div>
@@ -90,9 +90,9 @@ export async function Sidebar() {
           <Link
             key={item.href}
             href={item.href}
-            className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#8b5cf6]/10"
+            className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#2563eb]/10"
           >
-            <span className="text-[#6b6560] group-hover:text-[#8b5cf6] transition-colors duration-300">
+            <span className="text-[#6b6560] group-hover:text-[#2563eb] transition-colors duration-300">
               {icons[item.icon]}
             </span>
             <span className="tracking-wide">{item.label}</span>
@@ -106,9 +106,9 @@ export async function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#8b5cf6]/10"
+              className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#a09a90] hover:text-[#e4e4e7] hover:bg-[#1e1e28]/50 transition-all duration-300 border border-transparent hover:border-[#2563eb]/10"
             >
-              <span className="text-[#6b6560] group-hover:text-[#8b5cf6] transition-colors duration-300">
+              <span className="text-[#6b6560] group-hover:text-[#2563eb] transition-colors duration-300">
                 {icons[item.icon]}
               </span>
               <span className="tracking-wide flex-1">{item.label}</span>

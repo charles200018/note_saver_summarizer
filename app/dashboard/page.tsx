@@ -39,12 +39,12 @@ export default async function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#8b5cf6] to-[#7c3aed]" />
+              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#2563eb] to-[#1d4ed8]" />
               <h2 className="text-lg font-light tracking-wide text-[#e4e4e7]">Your Collections</h2>
             </div>
             <Link
               href="/folders"
-              className="text-sm text-[#8b5cf6] hover:text-[#a78bfa] transition-colors tracking-wide"
+              className="text-sm text-[#2563eb] hover:text-[#60a5fa] transition-colors tracking-wide"
             >
               View all →
             </Link>
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className="h-12 w-12 rounded-xl flex items-center justify-center border border-[#8b5cf6]/20"
+                        className="h-12 w-12 rounded-xl flex items-center justify-center border border-[#2563eb]/20"
                         style={{ backgroundColor: folder.color + "15" }}
                       >
                         <svg
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
           ) : (
             <div className="luxury-card rounded-2xl py-16 text-center">
               <p className="text-[#6b6560] text-sm tracking-wide">No collections yet</p>
-              <Link href="/folders" className="mt-3 inline-block text-sm text-[#8b5cf6] hover:text-[#a78bfa] tracking-wide">
+              <Link href="/folders" className="mt-3 inline-block text-sm text-[#2563eb] hover:text-[#60a5fa] tracking-wide">
                 Create your first collection →
               </Link>
             </div>
@@ -100,12 +100,12 @@ export default async function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#8b5cf6] to-[#7c3aed]" />
+              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#2563eb] to-[#1d4ed8]" />
               <h2 className="text-lg font-light tracking-wide text-[#e4e4e7]">Recent Notes</h2>
             </div>
             <Link
               href="/notes"
-              className="text-sm text-[#8b5cf6] hover:text-[#a78bfa] transition-colors tracking-wide"
+              className="text-sm text-[#2563eb] hover:text-[#60a5fa] transition-colors tracking-wide"
             >
               View all →
             </Link>
@@ -123,7 +123,7 @@ export default async function DashboardPage() {
                       {note.title || "Untitled"}
                     </h3>
                     {note.is_pinned && (
-                      <svg className="w-4 h-4 text-[#8b5cf6] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-[#2563eb] shrink-0" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                       </svg>
                     )}
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
                   {note.tags?.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {note.tags.slice(0, 3).map((tag: string) => (
-                        <span key={tag} className="rounded-full bg-[#8b5cf6]/10 px-3 py-1 text-[10px] font-medium text-[#8b5cf6] border border-[#8b5cf6]/20 tracking-wide uppercase">
+                        <span key={tag} className="rounded-full bg-[#2563eb]/10 px-3 py-1 text-[10px] font-medium text-[#2563eb] border border-[#2563eb]/20 tracking-wide uppercase">
                           {tag}
                         </span>
                       ))}
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
           ) : (
             <div className="luxury-card rounded-2xl py-16 text-center">
               <p className="text-[#6b6560] text-sm tracking-wide">No notes yet</p>
-              <Link href="/notes/new" className="mt-3 inline-block text-sm text-[#8b5cf6] hover:text-[#a78bfa] tracking-wide">
+              <Link href="/notes/new" className="mt-3 inline-block text-sm text-[#2563eb] hover:text-[#60a5fa] tracking-wide">
                 Create your first note →
               </Link>
             </div>
@@ -157,12 +157,12 @@ export default async function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#8b5cf6] to-[#7c3aed]" />
+              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-[#2563eb] to-[#1d4ed8]" />
               <h2 className="text-lg font-light tracking-wide text-[#e4e4e7]">Recent Summaries</h2>
             </div>
             <Link
               href="/youtube"
-              className="text-sm text-[#8b5cf6] hover:text-[#a78bfa] transition-colors tracking-wide"
+              className="text-sm text-[#2563eb] hover:text-[#60a5fa] transition-colors tracking-wide"
             >
               View all →
             </Link>
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
           ) : (
             <div className="luxury-card rounded-2xl py-16 text-center">
               <p className="text-[#6b6560] text-sm tracking-wide">No summaries yet</p>
-              <Link href="/youtube" className="mt-3 inline-block text-sm text-[#8b5cf6] hover:text-[#a78bfa] tracking-wide">
+              <Link href="/youtube" className="mt-3 inline-block text-sm text-[#2563eb] hover:text-[#60a5fa] tracking-wide">
                 Summarize a video →
               </Link>
             </div>

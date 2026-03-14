@@ -16,7 +16,7 @@ export function AuthButton({ email }: { email: string }) {
   return (
     <div className="flex flex-col gap-3 p-3 rounded-xl bg-[#111118]/50 border border-[#1e1e28]">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#7c3aed] flex items-center justify-center text-[#0a0a0f] font-semibold text-xs">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[#1d4ed8] flex items-center justify-center text-[#0a0a0f] font-semibold text-xs">
           {email.charAt(0).toUpperCase()}
         </div>
         <span className="text-xs text-[#a09a90] truncate flex-1">{email}</span>

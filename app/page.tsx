@@ -19,7 +19,7 @@ export default async function LandingPage() {
       <div className="relative mx-auto max-w-lg text-center space-y-10 px-4">
         {/* Logo */}
         <div className="flex justify-center">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] via-[#e5c454] to-[#9a7b1a] flex items-center justify-center shadow-xl shadow-[var(--color-accent)/30]">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] via-[#14b8a6] to-[#0f766e] flex items-center justify-center shadow-xl shadow-[var(--color-accent)/30]">
             {/* Diamond Icon */}
             <svg className="w-10 h-10 text-[#08080c]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 9l10 13 10-13L12 2zm0 3.84L18.26 9 12 17.65 5.74 9 12 5.84z"/>
@@ -74,7 +74,7 @@ export default async function LandingPage() {
             <div>
               <h3 className="font-light text-[#e4e4e7] text-sm tracking-wide flex items-center gap-2">
                 Image to Text
-                <span className="text-[9px] px-2 py-0.5 bg-violet-500/20 text-violet-300 rounded-full border border-violet-500/30">AI</span>
+                <span className="text-[9px] px-2 py-0.5 bg-[var(--color-accent)]/20 text-[#bfdbfe] rounded-full border border-[var(--color-accent)]/30">AI</span>
               </h3>
               <p className="text-xs text-[#606060] mt-1 font-light">Extract text from any image instantly</p>
             </div>

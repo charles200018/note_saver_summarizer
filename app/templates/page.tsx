@@ -8,7 +8,7 @@ const templates = [
     name: "Meeting Notes", 
     description: "Structured template for capturing meeting minutes and action items",
     icon: "users",
-    color: "#7c3aed"
+    color: "#1d4ed8"
   },
   { 
     name: "Project Plan", 
@@ -20,7 +20,7 @@ const templates = [
     name: "Daily Journal", 
     description: "Reflect on your day with guided prompts",
     icon: "book",
-    color: "#9333ea"
+    color: "#3b82f6"
   },
   { 
     name: "Research Notes", 
@@ -81,14 +81,14 @@ export default async function TemplatesPage() {
                     {template.icon === "calendar" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />}
                   </svg>
                 </div>
-                <h3 className="text-lg font-light text-[#e4e4e7] mb-2 tracking-wide group-hover:text-[#7c3aed] transition-colors">
+                <h3 className="text-lg font-light text-[#e4e4e7] mb-2 tracking-wide group-hover:text-[#1d4ed8] transition-colors">
                   {template.name}
                 </h3>
                 <p className="text-sm text-[#606060] font-light leading-relaxed">
                   {template.description}
                 </p>
                 <div className="mt-4 pt-4 border-t border-[#1a1a24]">
-                  <span className="text-xs text-[#7c3aed] tracking-wide uppercase font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-xs text-[#1d4ed8] tracking-wide uppercase font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                     Use Template →
                   </span>
                 </div>
@@ -103,7 +103,7 @@ export default async function TemplatesPage() {
                 <h3 className="text-lg font-light text-[#e4e4e7] mb-2 tracking-wide">Create Custom Template</h3>
                 <p className="text-sm text-[#606060] font-light">Design your own template to match your unique workflow</p>
               </div>
-              <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#9a7b1a] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#7c3aed]/30 transition-all duration-300">
+              <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0f766e] text-[#08080c] font-semibold tracking-wide uppercase text-sm hover:shadow-lg hover:shadow-[#1d4ed8]/30 transition-all duration-300">
                 Create Template
               </button>
             </div>

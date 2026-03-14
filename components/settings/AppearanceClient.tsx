@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 const accentColors = [
-  { name: "Violet", value: "#8b5cf6" },
-  { name: "Purple", value: "#7c3aed" },
+  { name: "Cobalt", value: "#2563eb" },
+  { name: "Royal Blue", value: "#1d4ed8" },
   { name: "Pink", value: "#ec4899" },
   { name: "Blue", value: "#3b82f6" },
   { name: "Orange", value: "#f59e42" },
@@ -15,9 +15,9 @@ const accentColors = [
 ];
 
 const themes = [
-  { name: "Luxury Dark", value: "dark" },
-  { name: "Midnight Violet", value: "midnight" },
-  { name: "Royal Purple", value: "royal" },
+  { name: "Enterprise Dark", value: "dark" },
+  { name: "Midnight Cobalt", value: "midnight" },
+  { name: "Graphite Blue", value: "royal" },
   { name: "Light", value: "light" },
 ];
 
@@ -50,7 +50,7 @@ export function AppearanceClient() {
           <p className="text-sm text-[#6b6560]">Choose your preferred color scheme</p>
         </div>
         <select
-          className="px-4 py-2 rounded-lg bg-[#111118] border border-[#2a2a38] text-[#e4e4e7] focus:border-[#8b5cf6]/50 focus:outline-none"
+          className="px-4 py-2 rounded-lg bg-[#111118] border border-[#2a2a38] text-[#e4e4e7] focus:border-[#2563eb]/50 focus:outline-none"
           value={theme}
           onChange={e => setTheme(e.target.value)}
         >
