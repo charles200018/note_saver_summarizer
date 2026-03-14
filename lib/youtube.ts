@@ -10,6 +10,24 @@ function collapseTranscript(lines: string[]): string {
   return lines.map((line) => normalizeCaptionText(line)).filter(Boolean).join(" ");
 }
 
+type CaptionTrack = {
+  baseUrl: string;
+  languageCode?: string;
+  kind?: string;
+  name?: {
+    simpleText?: string;
+    runs?: Array<{ text?: string }>;
+  };
+};
+
+type PlayerResponse = {
+  captions?: {
+    playerCaptionsTracklistRenderer?: {
+      captionTracks?: CaptionTrack[];
+    };
+  };
+};
+
 function decodeHtmlEntities(input: string): string {
   return input
     .replace(/&amp;/g, "&")
@@ -30,30 +48,152 @@ function parseCaptionXml(xml: string): string {
   return collapseTranscript(segments);
 }
 
-async function fetchCaptionXml(videoId: string, lang: string, kind?: "asr"): Promise<string | null> {
-  const captionUrl = new URL("https://video.google.com/timedtext");
-  captionUrl.searchParams.set("lang", lang);
-  captionUrl.searchParams.set("v", videoId);
-  if (kind) {
-    captionUrl.searchParams.set("kind", kind);
+function extractJsonObject(source: string, marker: string): string | null {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex === -1) {
+    return null;
   }
 
-  const response = await fetch(captionUrl.toString(), {
+  const startIndex = source.indexOf("{", markerIndex + marker.length);
+  if (startIndex === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = startIndex; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (char === "\\") {
+        isEscaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+async function fetchYouTubeWatchPage(videoId: string): Promise<string> {
+  const response = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
     cache: "no-store",
     headers: {
-      "accept-language": `${lang},en-US;q=0.9,en;q=0.8`,
+      "accept-language": "en-US,en;q=0.9",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      cookie: "CONSENT=YES+1; SOCS=CAI",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load YouTube watch page: ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function extractPlayerResponse(html: string): PlayerResponse {
+  const candidates = [
+    "var ytInitialPlayerResponse = ",
+    "ytInitialPlayerResponse = ",
+    "window[\"ytInitialPlayerResponse\"] = ",
+  ];
+
+  for (const marker of candidates) {
+    const json = extractJsonObject(html, marker);
+    if (!json) {
+      continue;
+    }
+
+    try {
+      return JSON.parse(json) as PlayerResponse;
+    } catch {
+      // Try next marker.
+    }
+  }
+
+  throw new Error("Could not locate ytInitialPlayerResponse on the watch page.");
+}
+
+function getCaptionTracks(playerResponse: PlayerResponse): CaptionTrack[] {
+  return playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+}
+
+function getTrackName(track: CaptionTrack): string {
+  if (track.name?.simpleText) {
+    return track.name.simpleText;
+  }
+
+  return track.name?.runs?.map((run) => run.text || "").join(" ") || "";
+}
+
+function selectBestEnglishCaptionTrack(captionTracks: CaptionTrack[]): CaptionTrack | null {
+  if (captionTracks.length === 0) {
+    return null;
+  }
+
+  const scoreTrack = (track: CaptionTrack): number => {
+    const code = (track.languageCode || "").toLowerCase();
+    const isAutoCaption = track.kind === "asr" || getTrackName(track).toLowerCase().includes("auto");
+
+    if (code === "en" && !isAutoCaption) return 100;
+    if ((code === "en-us" || code === "en-gb") && !isAutoCaption) return 90;
+    if (code.startsWith("en") && !isAutoCaption) return 80;
+    if (code === "en" && isAutoCaption) return 70;
+    if ((code === "en-us" || code === "en-gb") && isAutoCaption) return 60;
+    if (code.startsWith("en") && isAutoCaption) return 50;
+    return 0;
+  };
+
+  const sorted = [...captionTracks]
+    .map((track) => ({ track, score: scoreTrack(track) }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score);
+
+  return sorted[0]?.track ?? null;
+}
+
+async function fetchCaptionTrackXml(baseUrl: string): Promise<string> {
+  const response = await fetch(baseUrl, {
+    cache: "no-store",
+    headers: {
+      "accept-language": "en-US,en;q=0.9",
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     },
   });
 
   if (!response.ok) {
-    return null;
+    throw new Error(`Caption track request failed: ${response.status}`);
   }
 
   const xml = await response.text();
-  if (!xml.trim() || !xml.includes("<text")) {
-    return null;
+  if (!xml.trim()) {
+    throw new Error("Caption track response was empty.");
   }
 
   return xml;
@@ -93,8 +233,8 @@ export function extractVideoId(input: string): string | null {
 function mapTranscriptError(error: unknown): string {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
-  if (message.includes("caption") || message.includes("timedtext") || message.includes("transcript")) {
-    return "Captions are unavailable for this video, or YouTube did not return caption data.";
+  if (message.includes("ytinitialplayerresponse") || message.includes("caption") || message.includes("transcript")) {
+    return "Captions are unavailable for this video, or YouTube did not expose caption tracks.";
   }
 
   if (message.includes("private") || message.includes("unavailable") || message.includes("not found")) {
@@ -110,40 +250,31 @@ export async function fetchTranscript(videoUrl: string): Promise<string> {
     throw new Error("Please enter a valid YouTube video URL.");
   }
 
-  let lastError: unknown = new Error("Captions are unavailable.");
-  for (const lang of ["en", "en-US", "en-GB"]) {
-    try {
-      const manualXml = await fetchCaptionXml(videoId, lang);
-      const manualText = manualXml ? parseCaptionXml(manualXml) : "";
-      if (manualText) {
-        return manualText;
-      }
-
-      const autoXml = await fetchCaptionXml(videoId, lang, "asr");
-      const autoText = autoXml ? parseCaptionXml(autoXml) : "";
-      if (autoText) {
-        return autoText;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
   try {
-    const fallbackXml = await fetchCaptionXml(videoId, "en");
-    const fallbackText = fallbackXml ? parseCaptionXml(fallbackXml) : "";
-    if (fallbackText) {
-      return fallbackText;
+    const html = await fetchYouTubeWatchPage(videoId);
+    const playerResponse = extractPlayerResponse(html);
+    const captionTracks = getCaptionTracks(playerResponse);
+
+    if (captionTracks.length === 0) {
+      throw new Error("Caption tracks were not found for this video.");
     }
+
+    const bestTrack = selectBestEnglishCaptionTrack(captionTracks);
+    if (!bestTrack?.baseUrl) {
+      throw new Error("No English caption track is available for this video.");
+    }
+
+    const xml = await fetchCaptionTrackXml(bestTrack.baseUrl);
+    const transcript = parseCaptionXml(xml);
+
+    if (!transcript) {
+      throw new Error("Transcript was empty after parsing caption XML.");
+    }
+
+    return transcript;
   } catch (error) {
-    lastError = error;
+    throw new Error(mapTranscriptError(error));
   }
-
-  if (lastError instanceof Error && !String(lastError.message).trim()) {
-    lastError = new Error("Caption XML was empty.");
-  }
-
-  throw new Error(mapTranscriptError(lastError));
 }
 
 export async function fetchCaptionTranscript(videoUrl: string): Promise<{
@@ -156,10 +287,6 @@ export async function fetchCaptionTranscript(videoUrl: string): Promise<{
   }
 
   const transcript = await fetchTranscript(videoUrl);
-  if (!transcript.trim()) {
-    throw new Error("Transcript was empty after parsing caption XML.");
-  }
-
   return { videoId, transcript };
 }
 
