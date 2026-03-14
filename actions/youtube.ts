@@ -115,6 +115,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       },
     } satisfies SummarizeResult;
   } catch (error) {
+    console.error("summarizeYouTubeVideo failed", error);
     const message = error instanceof Error ? error.message : "Unexpected error while summarizing video.";
     return { success: false, error: message } satisfies SummarizeResult;
   }

@@ -8,6 +8,7 @@ type YtDlpSubtitleTrack = {
 
 type YtDlpMetadata = {
   id?: string;
+  requested_subtitles?: Record<string, YtDlpSubtitleTrack | YtDlpSubtitleTrack[]>;
   subtitles?: Record<string, YtDlpSubtitleTrack[]>;
   automatic_captions?: Record<string, YtDlpSubtitleTrack[]>;
 };
@@ -42,24 +43,42 @@ function collapseTranscript(lines: string[]): string {
   return deduped.join(" ");
 }
 
+function flattenSubtitleMap(
+  source?: Record<string, YtDlpSubtitleTrack | YtDlpSubtitleTrack[]>
+): Array<{ language: string; track: YtDlpSubtitleTrack }> {
+  if (!source) return [];
+
+  const results: Array<{ language: string; track: YtDlpSubtitleTrack }> = [];
+  for (const [language, value] of Object.entries(source)) {
+    const tracks = Array.isArray(value) ? value : [value];
+    for (const track of tracks) {
+      results.push({ language, track });
+    }
+  }
+
+  return results;
+}
+
 function collectEnglishTracks(metadata: YtDlpMetadata): YtDlpSubtitleTrack[] {
   const languagePriority = ["en", "en-us", "en-gb"];
-  const buckets = [metadata.subtitles, metadata.automatic_captions];
+  const buckets = [metadata.requested_subtitles, metadata.subtitles, metadata.automatic_captions];
   const tracks: YtDlpSubtitleTrack[] = [];
+  const seenUrls = new Set<string>();
 
   for (const source of buckets) {
     if (!source) continue;
 
-    const sourceEntries = Object.entries(source).sort((left, right) => {
-      const leftIndex = languagePriority.indexOf(left[0].toLowerCase());
-      const rightIndex = languagePriority.indexOf(right[0].toLowerCase());
+    const entries = flattenSubtitleMap(source);
+    const sourceEntries = entries.sort((left, right) => {
+      const leftIndex = languagePriority.indexOf(left.language.toLowerCase());
+      const rightIndex = languagePriority.indexOf(right.language.toLowerCase());
       const normalizedLeft = leftIndex === -1 ? 99 : leftIndex;
       const normalizedRight = rightIndex === -1 ? 99 : rightIndex;
       return normalizedLeft - normalizedRight;
     });
 
-    for (const [language, variants] of sourceEntries) {
-      const normalizedLanguage = language.toLowerCase();
+    for (const entry of sourceEntries) {
+      const normalizedLanguage = entry.language.toLowerCase();
       if (
         normalizedLanguage !== "en" &&
         normalizedLanguage !== "en-us" &&
@@ -69,11 +88,13 @@ function collectEnglishTracks(metadata: YtDlpMetadata): YtDlpSubtitleTrack[] {
         continue;
       }
 
-      for (const variant of variants || []) {
-        if (!variant.url) continue;
-        if (variant.ext === "json3" || variant.url.includes("fmt=json3")) {
-          tracks.push(variant);
-        }
+      const variant = entry.track;
+      if (!variant.url) continue;
+      if (seenUrls.has(variant.url)) continue;
+
+      if (variant.ext === "json3" || variant.url.includes("fmt=json3")) {
+        seenUrls.add(variant.url);
+        tracks.push(variant);
       }
     }
   }
@@ -167,7 +188,8 @@ export function extractVideoId(input: string): string | null {
 }
 
 function mapTranscriptError(error: unknown): string {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const message = rawMessage.toLowerCase();
 
   if (message.includes("yt-dlp") || message.includes("subtitle") || message.includes("caption") || message.includes("transcript")) {
     return "Subtitles are unavailable for this video, or YouTube did not return English subtitle tracks.";
@@ -177,7 +199,8 @@ function mapTranscriptError(error: unknown): string {
     return "This video is unavailable, private, or cannot be read right now.";
   }
 
-  return "Unable to fetch the transcript for this video right now. Please try another public video with captions.";
+  const detail = rawMessage.length > 240 ? `${rawMessage.slice(0, 240)}...` : rawMessage;
+  return `Unable to fetch the transcript for this video right now. ${detail}`;
 }
 
 export async function fetchTranscript(videoUrl: string): Promise<string> {
