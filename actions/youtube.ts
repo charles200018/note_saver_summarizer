@@ -20,7 +20,8 @@ type SummarizeResult =
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
   try {
-    const response = await fetch("/api/youtube/summarize", {
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/youtube/summarize`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
