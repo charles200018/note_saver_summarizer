@@ -20,7 +20,7 @@ type SummarizeResult =
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
   try {
-    const response = await fetch("http://localhost:3000/api/youtube/summarize", {
+    const response = await fetch("/api/youtube/summarize", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
