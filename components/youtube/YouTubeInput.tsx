@@ -53,18 +53,17 @@ export function YouTubeInput() {
 
     try {
       const result = await summarizeYouTubeVideo(trimmedUrl);
-      if (!result.success) {
+      if (result.success && result.data) {
+        setSummary({
+          tldr: result.data.tldr,
+          keyPoints: result.data.keyPoints,
+          detailedSummary: result.data.detailedSummary,
+        });
+        setUrl("");
+        router.refresh();
+      } else {
         setError(result.error);
-        return;
       }
-
-      setSummary({
-        tldr: result.data.tldr,
-        keyPoints: result.data.keyPoints,
-        detailedSummary: result.data.detailedSummary,
-      });
-      setUrl("");
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to summarize video");
     } finally {

@@ -5,7 +5,7 @@ import { Innertube } from "youtubei.js";
 import ytdlp from "yt-dlp-exec";
 
 // Caching mechanism
-const transcriptCache = new Map<string, { transcript: string; methodUsed: Method }>();
+const transcriptCache = new Map<string, TranscriptResult>();
 
 type Method = "captions" | "captionTrack" | "audioTranscription";
 
