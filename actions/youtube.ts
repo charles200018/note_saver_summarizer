@@ -20,22 +20,20 @@ type SummarizeResult =
 
 export async function summarizeYouTubeVideo(videoUrl: string) {
   try {
-    const normalizedUrl = videoUrl.trim();
+    const response = await fetch("http://localhost:3000/api/youtube/summarize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ videoUrl }),
+    });
 
-    if (!normalizedUrl) {
-      return { success: false, error: "Please paste a YouTube URL." } satisfies SummarizeResult;
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { success: false, error: errorData.error || "Failed to summarize video." };
     }
 
-    if (normalizedUrl.length > 500 || !extractYouTubeVideoId(normalizedUrl)) {
-      return { success: false, error: "Please enter a valid YouTube video URL." } satisfies SummarizeResult;
-    }
-
-    if (!process.env.GROQ_API_KEY) {
-      return {
-        success: false,
-        error: "AI is not configured yet. Please add GROQ_API_KEY in Vercel environment variables.",
-      } satisfies SummarizeResult;
-    }
+    const summaryData = await response.json();
 
     const supabase = await createClient();
     const {
@@ -43,66 +41,25 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return { success: false, error: "Please sign in again and try once more." } satisfies SummarizeResult;
+      return { success: false, error: "Please sign in again and try once more." };
     }
-
-    // Basic per-user rate limit: max 5 summaries per rolling 10 minutes.
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { count, error: rateLimitError } = await supabase
-      .schema("app_notes")
-      .from("youtube_summaries")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", tenMinutesAgo);
-
-    if (rateLimitError) {
-      return { success: false, error: "Unable to validate usage limits right now. Please retry." } satisfies SummarizeResult;
-    }
-    if ((count ?? 0) >= 5) {
-      return { success: false, error: "Rate limit exceeded. Please wait a few minutes and try again." } satisfies SummarizeResult;
-    }
-
-    const { transcript } = await getTranscriptFromUrl(normalizedUrl);
-    if (!transcript) {
-      return {
-        success: false,
-        error: "Could not fetch captions for this video. Make sure the video is public and has captions enabled.",
-      } satisfies SummarizeResult;
-    }
-
-    const { tldr, keyPoints, detailedSummary } = await summarizeTranscript(transcript);
-    const videoTitle = await getVideoTitle(normalizedUrl);
-
-    const summary = [
-      "## TLDR",
-      "",
-      tldr,
-      "",
-      "## Key Points",
-      "",
-      ...keyPoints.map((point) => `- ${point}`),
-      "",
-      "## Detailed Summary",
-      "",
-      detailedSummary,
-    ].join("\n");
-
+    
     const { data, error } = await supabase
       .schema("app_notes")
       .from("youtube_summaries")
       .insert({
         user_id: user.id,
-        video_url: normalizedUrl,
-        video_title: videoTitle,
-        thumbnail_url: getVideoThumbnail(normalizedUrl),
-        summary,
-        key_points: keyPoints,
+        video_url: videoUrl,
+        video_title: summaryData.title,
+        thumbnail_url: getVideoThumbnail(videoUrl),
+        summary: summaryData.summary,
+        key_points: summaryData.keyPoints,
       })
       .select("id")
       .single();
 
     if (error || !data) {
-      return { success: false, error: "Failed to save summary. Please try again." } satisfies SummarizeResult;
+      return { success: false, error: "Failed to save summary. Please try again." };
     }
 
     revalidatePath("/youtube");
@@ -110,15 +67,15 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       success: true,
       data: {
         id: data.id,
-        tldr,
-        keyPoints,
-        detailedSummary,
+        tldr: summaryData.summary.split("## TLDR")[1]?.split("## Key Points")[0]?.trim() ?? "",
+        keyPoints: summaryData.keyPoints,
+        detailedSummary: summaryData.summary.split("## Detailed Summary")[1]?.trim() ?? "",
       },
-    } satisfies SummarizeResult;
+    };
   } catch (error) {
     console.error("summarizeYouTubeVideo failed", error);
     const message = error instanceof Error ? error.message : "Unexpected error while summarizing video.";
-    return { success: false, error: message } satisfies SummarizeResult;
+    return { success: false, error: message };
   }
 }
 
