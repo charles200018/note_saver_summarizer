@@ -339,19 +339,26 @@ async function getTranscriptFromAudio(videoId: string): Promise<string | null> {
     }
 
     // 2. Transcribe using Groq Whisper API
-    const formData = new FormData();
-    const audioContent = fs.readFileSync(tempFile);
-    const audioBlob = new Blob([audioContent], { type: "audio/mpeg" });
-    formData.append("file", audioBlob, `${videoId}.mp3`);
-    formData.append("model", "whisper-large-v3");
-    formData.append("response_format", "json");
+    // We use a custom fetch here because standard Groq SDK/libraries might not be available or needed
+    const apiKey = process.env.GROQ_API_KEY;
+    const model = "whisper-large-v3";
+
+    // Use a standard fetch with multipart form data
+    const body = new FormData();
+    // In Node.js environment, we need to handle the file differently if using global fetch
+    // However, in Next.js/Vercel, we can pass a Blob
+    const audioData = fs.readFileSync(tempFile);
+    const audioBlob = new Blob([audioData], { type: "audio/mpeg" });
+    body.append("file", audioBlob, "audio.mp3");
+    body.append("model", model);
+    body.append("response_format", "json");
 
     const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${apiKey}`
       },
-      body: formData,
+      body: body
     });
 
     // Cleanup
@@ -505,7 +512,7 @@ export async function summarizeVideo(videoUrl: string) {
     const transcriptResult = await getTranscript(videoId, videoUrl);
 
     if (!transcriptResult) {
-      throw new Error("Could not retrieve transcript for the video.");
+      throw new Error("This video does not provide accessible captions.");
     }
 
     const { transcript, methodUsed, duration } = transcriptResult;
@@ -516,11 +523,19 @@ export async function summarizeVideo(videoUrl: string) {
     console.log("summarization_completed", { videoId, methodUsed });
 
     return {
-      title: videoTitle,
-      summary: detailedSummary,
+      success: true,
+      videoTitle: videoTitle,
+      detailedSummary: detailedSummary,
+      tldr: tldr,
       keyPoints: keyPoints,
       duration: new Date(duration * 1000).toISOString().substr(11, 8),
       methodUsed: methodUsed,
+    };
+  } catch (error) {
+    console.error("summarization_error", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An unexpected error occurred during summarization.",
     };
   } finally {
     summarizationRequests.delete(videoId);
