@@ -205,10 +205,13 @@ async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string |
       subFormat: "json3",
       noWarnings: true,
       preferFreeFormats: true,
+      addHeader: [
+        'User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      ]
     })) as YtDlpMetadata;
 
     if (!metadata?.id) {
-      console.log("caption_track_failure", "yt-dlp did not return metadata");
+      console.log("caption_track_failure", "yt-dlp metadata extraction failed");
       return null;
     }
 
@@ -218,43 +221,32 @@ async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string |
       return null;
     }
 
-    let lastError: unknown;
     let transcript = "";
-
     for (const track of englishTracks) {
       try {
+        if (!track.url) continue;
         console.log("caption_track_fetch", { url: track.url });
-        const response = await fetch(track.url!, {
+        
+        const response = await fetch(track.url, {
           cache: "no-store",
           headers: {
-            "accept-language": "en-US,en;q=0.9",
-            "user-agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
           },
         });
 
-        if (!response.ok) {
-          throw new Error(`Subtitle fetch failed: ${response.status}`);
-        }
+        if (!response.ok) continue;
 
         const subtitlePayload = (await response.json()) as SubtitleJson3;
         transcript = json3ToPlainText(subtitlePayload);
-        if (transcript) {
-          console.log("caption_track_success");
-          break;
-        }
-      } catch (innerError) {
-        lastError = innerError;
-        console.log("caption_track_fetch_failed", { error: String(innerError) });
+        if (transcript) break;
+      } catch (err) {
+        console.log("caption_track_fetch_error", { error: String(err) });
       }
     }
 
-    if (!transcript) {
-      console.log("caption_track_empty", { lastError: String(lastError) });
-    }
     return transcript || null;
   } catch (error) {
-    console.log("caption_track_overall_failure", error);
+    console.log("caption_track_overall_failure", { error: String(error) });
     return null;
   }
 }
