@@ -63,14 +63,17 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
     }
 
     const result = await summarizeVideo(normalizedUrl);
-    if (!result || "error" in result) {
+    
+    // Explicitly check for error property in result
+    if (!result || (typeof result === 'object' && 'success' in result && result.success === false)) {
+      const errorMsg = (result as any)?.error || "Could not fetch captions for this video. Make sure the video is public and has captions enabled.";
       return {
         success: false,
-        error: typeof result === "object" && result !== null && "error" in result ? String(result.error) : "Could not fetch captions for this video. Make sure the video is public and has captions enabled.",
+        error: errorMsg,
       } satisfies SummarizeResult;
     }
 
-    const { tldr, keyPoints, detailedSummary, videoTitle } = result;
+    const { tldr, keyPoints, detailedSummary, videoTitle } = result as any;
 
     const summary = [
       "## TLDR",
