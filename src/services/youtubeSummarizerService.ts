@@ -195,6 +195,7 @@ async function getTranscriptFromCaptions(videoId: string): Promise<string | null
 
 async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string | null> {
   try {
+    console.log("caption_track_attempt", { videoUrl });
     const metadata = (await ytdlp(videoUrl, {
       dumpSingleJson: true,
       skipDownload: true,
@@ -207,12 +208,14 @@ async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string |
     })) as YtDlpMetadata;
 
     if (!metadata?.id) {
-      throw new Error("yt-dlp did not return metadata for this video.");
+      console.log("caption_track_failure", "yt-dlp did not return metadata");
+      return null;
     }
 
     const englishTracks = collectEnglishTracks(metadata);
     if (englishTracks.length === 0) {
-      throw new Error("No English subtitles or auto-subtitles were found.");
+      console.log("caption_track_failure", "No English tracks found in metadata");
+      return null;
     }
 
     let lastError: unknown;
@@ -220,6 +223,7 @@ async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string |
 
     for (const track of englishTracks) {
       try {
+        console.log("caption_track_fetch", { url: track.url });
         const response = await fetch(track.url!, {
           cache: "no-store",
           headers: {
@@ -230,27 +234,27 @@ async function getTranscriptFromCaptionTrack(videoUrl: string): Promise<string |
         });
 
         if (!response.ok) {
-          throw new Error(`Subtitle request failed with ${response.status}.`);
+          throw new Error(`Subtitle fetch failed: ${response.status}`);
         }
 
         const subtitlePayload = (await response.json()) as SubtitleJson3;
         transcript = json3ToPlainText(subtitlePayload);
         if (transcript) {
+          console.log("caption_track_success");
           break;
         }
       } catch (innerError) {
         lastError = innerError;
+        console.log("caption_track_fetch_failed", { error: String(innerError) });
       }
     }
 
     if (!transcript) {
-      const suffix = lastError instanceof Error ? ` ${lastError.message}` : "";
-      throw new Error(`Transcript was empty after parsing subtitle json3.${suffix}`.trim());
+      console.log("caption_track_empty", { lastError: String(lastError) });
     }
-    console.log("caption_track_success");
-    return transcript;
+    return transcript || null;
   } catch (error) {
-    console.log("caption_track_failure", error);
+    console.log("caption_track_overall_failure", error);
     return null;
   }
 }
