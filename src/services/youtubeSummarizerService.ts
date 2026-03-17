@@ -3,6 +3,9 @@
 import { summarizeTranscript } from "@/lib/groq";
 import { Innertube } from "youtubei.js";
 import ytdlp from "yt-dlp-exec";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 // Caching mechanism
 const transcriptCache = new Map<string, TranscriptResult>();
@@ -313,8 +316,64 @@ function collectEnglishTracks(metadata: YtDlpMetadata): YtDlpSubtitleTrack[] {
 
 async function getTranscriptFromAudio(videoId: string): Promise<string | null> {
   console.log("audio_transcription_used");
-  // Placeholder for audio transcription logic
-  return null;
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const tempFile = path.join(os.tmpdir(), `${videoId}.mp3`);
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    console.error("GROQ_API_KEY not found for audio transcription");
+    return null;
+  }
+
+  try {
+    // 1. Download audio using yt-dlp
+    await ytdlp(videoUrl, {
+      extractAudio: true,
+      audioFormat: "mp3",
+      output: tempFile,
+      noWarnings: true,
+    });
+
+    if (!fs.existsSync(tempFile)) {
+      throw new Error("Failed to download audio file");
+    }
+
+    // 2. Transcribe using Groq Whisper API
+    const formData = new FormData();
+    const audioContent = fs.readFileSync(tempFile);
+    const audioBlob = new Blob([audioContent], { type: "audio/mpeg" });
+    formData.append("file", audioBlob, `${videoId}.mp3`);
+    formData.append("model", "whisper-large-v3");
+    formData.append("response_format", "json");
+
+    const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: formData,
+    });
+
+    // Cleanup
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Groq Whisper API error: ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    console.log("audio_transcription_success");
+    return data.text || null;
+  } catch (error) {
+    console.error("audio_transcription_failure", error);
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+    return null;
+  }
 }
 
 async function getVideoDuration(videoUrl: string): Promise<number> {

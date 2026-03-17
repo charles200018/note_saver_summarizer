@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
-import { extractYouTubeVideoId, getTranscriptFromUrl } from "@/lib/youtubeTranscript";
-import { summarizeTranscript } from "@/lib/groq";
+import { getVideoThumbnail } from "@/lib/youtube";
+import { extractYouTubeVideoId } from "@/lib/youtubeTranscript";
+import { summarizeVideo } from "@/src/services/youtubeSummarizerService";
 import { revalidatePath } from "next/cache";
 
 type SummarizeResult =
@@ -62,16 +62,15 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       return { success: false, error: "Rate limit exceeded. Please wait a few minutes and try again." } satisfies SummarizeResult;
     }
 
-    const { transcript } = await getTranscriptFromUrl(normalizedUrl);
-    if (!transcript) {
+    const result = await summarizeVideo(normalizedUrl);
+    if (!result || "error" in result) {
       return {
         success: false,
-        error: "Could not fetch captions for this video. Make sure the video is public and has captions enabled.",
+        error: typeof result === "object" && result !== null && "error" in result ? String(result.error) : "Could not fetch captions for this video. Make sure the video is public and has captions enabled.",
       } satisfies SummarizeResult;
     }
 
-    const { tldr, keyPoints, detailedSummary } = await summarizeTranscript(transcript);
-    const videoTitle = await getVideoTitle(normalizedUrl);
+    const { tldr, keyPoints, detailedSummary, videoTitle } = result;
 
     const summary = [
       "## TLDR",
@@ -80,7 +79,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       "",
       "## Key Points",
       "",
-      ...keyPoints.map((point) => `- ${point}`),
+      ...keyPoints.map((point: string) => `- ${point}`),
       "",
       "## Detailed Summary",
       "",
@@ -93,7 +92,7 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       .insert({
         user_id: user.id,
         video_url: normalizedUrl,
-        video_title: videoTitle,
+        video_title: videoTitle || "YouTube Video",
         thumbnail_url: getVideoThumbnail(normalizedUrl),
         summary,
         key_points: keyPoints,
