@@ -36,21 +36,9 @@ export default function Home() {
                   ? "border-[#c89d55]/50 bg-[#1b1109]/70 text-[#fae9ca] hover:border-[#efc57d]"
                   : "border-[#b88735]/50 bg-[#fff2dc] text-[#4c3318] hover:border-[#8f6520]"
               }`}
-              onClick={() => setShowAbout(false)}
+              onClick={() => setShowAbout((prev) => !prev)}
             >
-              Home
-            </button>
-
-            <button
-              type="button"
-              className={`rounded-md border px-4 py-2 text-sm font-medium transition ${
-                isDark
-                  ? "border-[#c89d55]/50 bg-[#1b1109]/70 text-[#fae9ca] hover:border-[#efc57d]"
-                  : "border-[#b88735]/50 bg-[#fff2dc] text-[#4c3318] hover:border-[#8f6520]"
-              }`}
-              onClick={() => setShowAbout(true)}
-            >
-              About
+              {showAbout ? "Back" : "About"}
             </button>
 
             <button
@@ -127,7 +115,7 @@ export default function Home() {
               <h2 className="mb-2 text-xl font-semibold">About</h2>
               <p>
                 AI Personal OS is a simple launch page that helps you quickly access your AI tools.
-                Use the menu to switch between Home and About, and choose Bright or Dark theme based on your preference.
+                Use the menu to open this About section and choose Bright or Dark theme based on your preference.
               </p>
             </section>
           )}
