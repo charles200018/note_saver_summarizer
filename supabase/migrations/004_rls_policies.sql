@@ -3,6 +3,22 @@
 alter table app_notes.notes enable row level security;
 alter table app_notes.youtube_summaries enable row level security;
 
+-- Deny all access for anonymous users on notes
+drop policy if exists "anon_notes_access" on app_notes.notes;
+create policy "anon_notes_access"
+  on app_notes.notes
+  for all
+  to anon
+  using (false);
+
+-- Deny all access for anonymous users on youtube_summaries
+drop policy if exists "anon_youtube_summaries_access" on app_notes.youtube_summaries;
+create policy "anon_youtube_summaries_access"
+  on app_notes.youtube_summaries
+  for all
+  to anon
+  using (false);
+
 -- notes policies
 
 drop policy if exists notes_select_own on app_notes.notes;
