@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { TopNav } from "@/components/layout/TopNav";
-import { Sidebar } from "@/components/layout/Sidebar";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -37,11 +36,9 @@ export default async function DashboardPage() {
   const foldersCount = folders?.length ?? 0;
 
   return (
-    <>
-      <Sidebar />
-      <div className="dashboard-shell lg:ml-64">
-        <TopNav title="Dashboard" email={user.email} />
-        <main className="p-4 sm:p-6 lg:p-8 space-y-10">
+    <div className="dashboard-shell lg:ml-64">
+      <TopNav title="Dashboard" email={user.email} />
+      <main className="p-4 sm:p-6 lg:p-8 space-y-10">
         <section className="aurora-panel rounded-3xl p-6 sm:p-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
@@ -241,8 +238,7 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
-        </main>
-      </div>
-    </>
+      </main>
+    </div>
   );
 }
