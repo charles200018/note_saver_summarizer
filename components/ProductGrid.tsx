@@ -30,7 +30,7 @@ const products: Product[] = [
   },
 ];
 
-export function ProductGrid({ serifClassName }: ProductGridProps) {
+export default function ProductGrid({ serifClassName }: ProductGridProps) {
   return (
     <section id="products" className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16">
       <div className="mb-10 flex items-center justify-between gap-6">
