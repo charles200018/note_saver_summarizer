@@ -83,7 +83,7 @@ export default function Home() {
                       : "border-[#b88735]/50 bg-[#fff2dc] text-[#4c3318] hover:border-[#8f6520] hover:bg-[#f9e8c9]"
                   }`}
                   onClick={() => {
-                    window.location.href = "https://notesaversummarizerpro.vercel.app/";
+                    window.location.href = "https://notesaversummarizerpro.vercel.app/login";
                   }}
                 >
                   Open Summarizer
