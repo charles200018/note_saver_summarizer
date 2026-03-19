@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Cinzel, Inter } from "next/font/google";
-import { Sidebar } from "@/components/layout/Sidebar";
 import "./globals.css";
 
 const inter = Inter({
@@ -29,7 +28,6 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${cinzel.variable} antialiased bg-[#0b0604] text-[#f5e6d3]`}
       >
-        <Sidebar />
         {children}
       </body>
     </html>
