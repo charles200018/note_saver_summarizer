@@ -26,9 +26,37 @@ function isValidYouTubeUrl(input: string): boolean {
   return false;
 }
 
+function extractYouTubeVideoId(input: string): string | null {
+  try {
+    const url = new URL(input);
+    const host = url.hostname.replace(/^www\./, "");
+
+    if (host === "youtu.be") {
+      const id = url.pathname.split("/").filter(Boolean)[0];
+      return id && id.length === 11 ? id : null;
+    }
+
+    if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) {
+      if (url.pathname === "/watch") {
+        const id = url.searchParams.get("v");
+        return id && id.length === 11 ? id : null;
+      }
+
+      if (url.pathname.startsWith("/shorts/") || url.pathname.startsWith("/embed/")) {
+        const id = url.pathname.split("/").filter(Boolean)[1];
+        return id && id.length === 11 ? id : null;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function YouTubeInput() {
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<"idle" | "fetching" | "summarizing">("idle");
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<{
     tldr: string;
@@ -47,12 +75,35 @@ export function YouTubeInput() {
       return;
     }
 
-    setLoading(true);
+    setLoadingStage("fetching");
     setError("");
     setSummary(null);
 
     try {
-      const result = await summarizeYouTubeVideo(trimmedUrl);
+      const videoId = extractYouTubeVideoId(trimmedUrl);
+      if (!videoId) {
+        setError("Please paste a valid YouTube video URL.");
+        return;
+      }
+
+      const transcriptResponse = await fetch(`/api/transcript?videoId=${encodeURIComponent(videoId)}`);
+      if (!transcriptResponse.ok) {
+        const errorBody = (await transcriptResponse.json().catch(() => ({ error: "Failed to fetch transcript." }))) as {
+          error?: string;
+        };
+        setError(errorBody.error || "Failed to fetch transcript.");
+        return;
+      }
+
+      const transcriptBody = (await transcriptResponse.json()) as { transcript?: string; error?: string };
+      const transcript = (transcriptBody.transcript || "").trim();
+      if (!transcript) {
+        setError(transcriptBody.error || "Failed to fetch transcript.");
+        return;
+      }
+
+      setLoadingStage("summarizing");
+      const result = await summarizeYouTubeVideo(trimmedUrl, transcript);
       if (result.success && result.data) {
         setSummary({
           tldr: result.data.tldr,
@@ -67,7 +118,7 @@ export function YouTubeInput() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to summarize video");
     } finally {
-      setLoading(false);
+      setLoadingStage("idle");
     }
   };
 
@@ -100,16 +151,16 @@ export function YouTubeInput() {
         </div>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loadingStage !== "idle"}
           className="luxury-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          {loading ? (
+          {loadingStage !== "idle" ? (
             <>
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Summarizing...
+              {loadingStage === "fetching" ? "Fetching transcript..." : "Summarizing..."}
             </>
           ) : (
             "Summarize"

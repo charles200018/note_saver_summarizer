@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { extractVideoId as extractYouTubeVideoId, getVideoThumbnail } from "@/lib/youtube";
-import { summarizeVideo } from "@/src/services/youtubeSummarizerService";
+import { summarizeTranscript } from "@/lib/groq";
+import { extractVideoId as extractYouTubeVideoId, getVideoThumbnail, getVideoTitle } from "@/lib/youtube";
 import { revalidatePath } from "next/cache";
 
 type SummarizeResult =
@@ -17,9 +17,10 @@ type SummarizeResult =
     }
   | { success: false; error: string };
 
-export async function summarizeYouTubeVideo(videoUrl: string) {
+export async function summarizeYouTubeVideo(videoUrl: string, transcript: string) {
   try {
     const normalizedUrl = videoUrl.trim();
+    const normalizedTranscript = transcript.trim();
 
     if (!normalizedUrl) {
       return { success: false, error: "Please paste a YouTube URL." } satisfies SummarizeResult;
@@ -27,6 +28,10 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
 
     if (normalizedUrl.length > 500 || !extractYouTubeVideoId(normalizedUrl)) {
       return { success: false, error: "Please enter a valid YouTube video URL." } satisfies SummarizeResult;
+    }
+
+    if (!normalizedTranscript) {
+      return { success: false, error: "Could not fetch transcript for this video." } satisfies SummarizeResult;
     }
 
     if (!process.env.GROQ_API_KEY) {
@@ -61,18 +66,12 @@ export async function summarizeYouTubeVideo(videoUrl: string) {
       return { success: false, error: "Rate limit exceeded. Please wait a few minutes and try again." } satisfies SummarizeResult;
     }
 
-    const result = await summarizeVideo(normalizedUrl);
-    
-    // Explicitly check for error property in result
-    if (!result || (typeof result === 'object' && 'success' in result && result.success === false)) {
-      const errorMsg = (result as any)?.error || "Could not fetch captions for this video. Make sure the video is public and has captions enabled.";
-      return {
-        success: false,
-        error: errorMsg,
-      } satisfies SummarizeResult;
-    }
+    const [summaryResult, videoTitle] = await Promise.all([
+      summarizeTranscript(normalizedTranscript),
+      getVideoTitle(normalizedUrl),
+    ]);
 
-    const { tldr, keyPoints, detailedSummary, videoTitle } = result as any;
+    const { tldr, keyPoints, detailedSummary } = summaryResult;
 
     const summary = [
       "## TLDR",
