@@ -1,6 +1,5 @@
 import { summarizeTranscript } from "@/lib/groq";
-import { extractVideoId as extractYouTubeVideoId, fetchCaptionTranscript, getVideoTitle } from "@/lib/youtube";
-import { Innertube } from "youtubei.js";
+import { extractVideoId as extractYouTubeVideoId, fetchCaptionTranscript, getVideoDuration, getVideoTitle } from "@/lib/youtube";
 
 const transcriptCache = new Map<string, TranscriptResult>();
 const summarizationRequests = new Set<string>();
@@ -12,17 +11,6 @@ type TranscriptResult = {
   methodUsed: Method;
   duration: number;
 };
-
-async function getVideoDuration(videoId: string): Promise<number> {
-  try {
-    const youtube = await Innertube.create();
-    const info = await youtube.getInfo(videoId);
-    return info.basic_info.duration ?? 0;
-  } catch (error) {
-    console.error("Failed to get video duration", error);
-    return 0;
-  }
-}
 
 async function getTranscript(videoId: string, videoUrl: string): Promise<TranscriptResult> {
   if (transcriptCache.has(videoId)) {

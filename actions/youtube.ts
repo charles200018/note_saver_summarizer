@@ -1,8 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getVideoThumbnail } from "@/lib/youtube";
-import { extractYouTubeVideoId } from "@/lib/youtubeTranscript";
+import { extractVideoId as extractYouTubeVideoId, getVideoThumbnail } from "@/lib/youtube";
 import { summarizeVideo } from "@/src/services/youtubeSummarizerService";
 import { revalidatePath } from "next/cache";
 

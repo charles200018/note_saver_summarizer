@@ -1,5 +1,5 @@
 import { summarizeTranscript } from "@/lib/groq";
-import { extractYouTubeVideoId, getTranscript } from "@/lib/youtubeTranscript";
+import { extractVideoId as extractYouTubeVideoId, fetchTranscript } from "@/lib/youtube";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please provide a valid YouTube URL." }, { status: 400 });
     }
 
-    const transcript = await getTranscript(videoIdForLogs);
+    const transcript = await fetchTranscript(youtubeUrl);
     if (transcript.length <= 500) {
       return NextResponse.json(
         { error: "This video does not provide accessible captions." },
