@@ -30,6 +30,20 @@ type PlayerClient = {
   userAgent: string;
 };
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function normalizeText(input: string): string {
   return input.replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
 }
@@ -109,11 +123,13 @@ async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
 
   for (const client of clients) {
     try {
-      const innerTubeResponse = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+      const innerTubeResponse = await fetchWithTimeout("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
         method: "POST",
         cache: "no-store",
         headers: {
           "content-type": "application/json",
+          "x-youtube-client-name": client.clientName === "ANDROID" ? "3" : client.clientName === "IOS" ? "5" : "1",
+          "x-youtube-client-version": client.clientVersion,
           "user-agent": client.userAgent,
         },
         body: JSON.stringify({
@@ -144,7 +160,7 @@ async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
     }
   }
 
-  const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+  const watchResponse = await fetchWithTimeout(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
     cache: "no-store",
     headers: {
       "accept-language": "en-US,en;q=0.9",
@@ -196,7 +212,7 @@ async function fetchCaptionText(baseUrl: string): Promise<string> {
   const jsonUrl = new URL(baseUrl);
   jsonUrl.searchParams.set("fmt", "json3");
 
-  const jsonResponse = await fetch(jsonUrl.toString(), {
+  const jsonResponse = await fetchWithTimeout(jsonUrl.toString(), {
     cache: "no-store",
     headers,
   });
@@ -254,7 +270,7 @@ async function fetchCaptionText(baseUrl: string): Promise<string> {
     return lines.join(" ").trim();
   };
 
-  const xmlResponse = await fetch(baseUrl, {
+  const xmlResponse = await fetchWithTimeout(baseUrl, {
     cache: "no-store",
     headers,
   });
@@ -265,7 +281,7 @@ async function fetchCaptionText(baseUrl: string): Promise<string> {
     if (parsed) return parsed;
   }
 
-  const legacyResponse = await fetch(baseUrl, {
+  const legacyResponse = await fetchWithTimeout(baseUrl, {
     cache: "no-store",
     headers: legacyTimedTextHeaders,
   });
@@ -436,7 +452,7 @@ export async function getVideoTitle(videoUrl: string): Promise<string> {
   if (!videoId) return "Unknown Video";
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
       { cache: "no-store" }
     );

@@ -1,9 +1,6 @@
 import { summarizeTranscript } from "@/lib/groq";
 import { extractVideoId as extractYouTubeVideoId, fetchCaptionTranscript, getVideoDuration, getVideoTitle } from "@/lib/youtube";
 
-const transcriptCache = new Map<string, TranscriptResult>();
-const summarizationRequests = new Set<string>();
-
 type Method = "captions";
 
 type TranscriptResult = {
@@ -12,17 +9,11 @@ type TranscriptResult = {
   duration: number;
 };
 
-async function getTranscript(videoId: string, videoUrl: string): Promise<TranscriptResult> {
-  if (transcriptCache.has(videoId)) {
-    return transcriptCache.get(videoId)!;
-  }
-
-  const duration = await getVideoDuration(videoId);
+async function getTranscript(videoUrl: string): Promise<TranscriptResult> {
+  const duration = await getVideoDuration(videoUrl);
   const { transcript } = await fetchCaptionTranscript(videoUrl);
 
-  const result = { transcript, methodUsed: "captions" as const, duration };
-  transcriptCache.set(videoId, result);
-  return result;
+  return { transcript, methodUsed: "captions" as const, duration };
 }
 
 export async function summarizeVideo(videoUrl: string) {
@@ -31,14 +22,8 @@ export async function summarizeVideo(videoUrl: string) {
     throw new Error("Invalid YouTube URL");
   }
 
-  if (summarizationRequests.has(videoId)) {
-    console.log("duplicate_processing_request_prevented", { videoId });
-    throw new Error("Duplicate summarization request for this video.");
-  }
-  summarizationRequests.add(videoId);
-
   try {
-    const transcriptResult = await getTranscript(videoId, videoUrl);
+    const transcriptResult = await getTranscript(videoUrl);
     const { transcript, methodUsed, duration } = transcriptResult;
 
     const { tldr, keyPoints, detailedSummary } = await summarizeTranscript(transcript);
@@ -61,7 +46,5 @@ export async function summarizeVideo(videoUrl: string) {
       success: false,
       error: error instanceof Error ? error.message : "An unexpected error occurred during summarization.",
     };
-  } finally {
-    summarizationRequests.delete(videoId);
   }
 }
