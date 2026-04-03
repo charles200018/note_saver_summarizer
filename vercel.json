@@ -2,9 +2,6 @@
 	"functions": {
 		"app/api/youtube*": {
 			"maxDuration": 60
-		},
-		"actions/youtube.ts": {
-			"maxDuration": 60
 		}
 	}
 }
