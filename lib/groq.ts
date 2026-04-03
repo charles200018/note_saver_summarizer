@@ -7,7 +7,7 @@ export type TranscriptSummary = {
 };
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_SUMMARY_MODEL || "llama3-70b-8192";
+const GROQ_MODEL = process.env.GROQ_SUMMARY_MODEL || "llama-3.1-8b-instant";
 const MAX_CHARS_PER_CHUNK = 10000;
 
 function normalizeText(input: string): string {

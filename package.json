@@ -18,8 +18,8 @@
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
     "tesseract.js": "^7.0.0",
+    "youtube-captions-scraper": "^2.0.3",
     "youtubei.js": "github:LuanRT/YouTube.js",
-    "yt-dlp-exec": "^1.0.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
