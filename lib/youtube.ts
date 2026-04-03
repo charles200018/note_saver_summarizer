@@ -24,6 +24,12 @@ type PlayerResponse = {
   };
 };
 
+type PlayerClient = {
+  clientName: "ANDROID" | "IOS" | "WEB";
+  clientVersion: string;
+  userAgent: string;
+};
+
 function normalizeText(input: string): string {
   return input.replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
 }
@@ -82,33 +88,60 @@ function extractPlayerResponse(html: string): PlayerResponse | null {
 }
 
 async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
-  try {
-    const innerTubeResponse = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "content-type": "application/json",
-        "user-agent": "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
-      },
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: "ANDROID",
-            clientVersion: "20.10.38",
-          },
-        },
-        videoId,
-      }),
-    });
+  const clients: PlayerClient[] = [
+    {
+      clientName: "ANDROID",
+      clientVersion: "20.10.38",
+      userAgent: "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
+    },
+    {
+      clientName: "IOS",
+      clientVersion: "20.10.4",
+      userAgent: "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 17_2 like Mac OS X)",
+    },
+    {
+      clientName: "WEB",
+      clientVersion: "2.20250220.01.00",
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    },
+  ];
 
-    if (innerTubeResponse.ok) {
+  for (const client of clients) {
+    try {
+      const innerTubeResponse = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "content-type": "application/json",
+          "user-agent": client.userAgent,
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: client.clientName,
+              clientVersion: client.clientVersion,
+              hl: "en",
+              gl: "US",
+            },
+          },
+          videoId,
+          contentCheckOk: true,
+          racyCheckOk: true,
+        }),
+      });
+
+      if (!innerTubeResponse.ok) {
+        continue;
+      }
+
       const payload = (await innerTubeResponse.json()) as PlayerResponse;
       if (payload.captions?.playerCaptionsTracklistRenderer?.captionTracks?.length) {
         return payload;
       }
+    } catch {
+      // Continue with the next client.
     }
-  } catch {
-    // Fall back to watch-page parsing.
   }
 
   const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
@@ -266,15 +299,39 @@ function pickCaptionTrack(tracks: CaptionTrack[]): CaptionTrack | null {
 async function fetchTranscriptViaApi(videoId: string): Promise<string> {
   const playerResponse = await fetchPlayerResponse(videoId);
   const tracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-  const selectedTrack = pickCaptionTrack(tracks);
 
-  const baseUrl = selectedTrack?.baseUrl || selectedTrack?.base_url;
-  if (baseUrl) {
-    const text = await fetchCaptionText(baseUrl);
-    if (text) return text;
+  const orderedTracks = [...tracks]
+    .map((track) => {
+      const picked = pickCaptionTrack([track]);
+      const language = (picked?.languageCode || picked?.language_code || "").toLowerCase();
+      const languagePriority = language === "en" || language === "en-us" || language === "en-gb" ? 0 : language.startsWith("en-") ? 1 : 2;
+      const asrPenalty = picked?.kind === "asr" ? 1 : 0;
+      return { track, score: languagePriority + asrPenalty };
+    })
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.track);
+
+  const trackErrors: string[] = [];
+  for (const track of orderedTracks) {
+    const baseUrl = track.baseUrl || track.base_url;
+    if (!baseUrl) continue;
+
+    try {
+      const text = await fetchCaptionText(baseUrl);
+      if (text) return text;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      trackErrors.push(msg);
+    }
   }
 
   if (tracks.length > 0) {
+    console.error("youtube transcript track attempts failed", {
+      videoId,
+      trackCount: tracks.length,
+      languages: tracks.map((track) => track.languageCode || track.language_code || "unknown"),
+      errors: trackErrors.slice(0, 3),
+    });
     throw new Error("Unable to parse caption data for this video.");
   }
 
