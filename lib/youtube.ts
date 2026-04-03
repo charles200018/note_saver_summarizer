@@ -1,21 +1,115 @@
-import { getSubtitles } from "youtube-captions-scraper";
+import { Innertube } from "youtubei.js";
 
-type Caption = {
-  text: string;
+type CaptionTrack = {
+  base_url: string;
+  language_code?: string;
+  kind?: string;
+};
+
+type Json3Payload = {
+  events?: Array<{
+    segs?: Array<{ utf8?: string }>;
+  }>;
 };
 
 function normalizeText(input: string): string {
   return input.replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
 }
 
-async function fetchTranscriptViaApi(videoId: string): Promise<string> {
-  const captions = (await getSubtitles({ videoID: videoId, lang: "en" })) as Caption[] | undefined;
+function json3ToPlainText(payload: Json3Payload): string {
+  const lines: string[] = [];
+  for (const event of payload.events || []) {
+    const line = (event.segs || []).map((segment) => segment.utf8 || "").join("");
+    const normalized = normalizeText(line);
+    if (!normalized) continue;
+    if (lines[lines.length - 1] !== normalized) {
+      lines.push(normalized);
+    }
+  }
+  return lines.join(" ").trim();
+}
 
-  if (!captions || captions.length === 0) {
-    throw new Error("No captions available for this video");
+async function fetchCaptionText(baseUrl: string): Promise<string> {
+  const headers = {
+    "accept-language": "en-US,en;q=0.9",
+    "user-agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  };
+
+  const jsonUrl = new URL(baseUrl);
+  jsonUrl.searchParams.set("fmt", "json3");
+
+  const jsonResponse = await fetch(jsonUrl.toString(), {
+    cache: "no-store",
+    headers,
+  });
+
+  if (jsonResponse.ok) {
+    try {
+      const payload = (await jsonResponse.json()) as Json3Payload;
+      const jsonText = json3ToPlainText(payload);
+      if (jsonText) return jsonText;
+    } catch {
+      // Fall through to XML parsing
+    }
   }
 
-  return normalizeText(captions.map((caption) => caption.text).join(" "));
+  const xmlResponse = await fetch(baseUrl, {
+    cache: "no-store",
+    headers,
+  });
+
+  if (!xmlResponse.ok) {
+    throw new Error("This video does not provide accessible captions.");
+  }
+
+  const xml = await xmlResponse.text();
+  const matches = xml.match(/<text[^>]*>([\s\S]*?)<\/text>/g) || [];
+  const lines: string[] = [];
+
+  for (const match of matches) {
+    const inner = match.replace(/^<text[^>]*>/, "").replace(/<\/text>$/, "");
+    const normalized = normalizeText(inner);
+    if (!normalized) continue;
+    if (lines[lines.length - 1] !== normalized) {
+      lines.push(normalized);
+    }
+  }
+
+  return lines.join(" ").trim();
+}
+
+function pickCaptionTrack(tracks: CaptionTrack[]): CaptionTrack | null {
+  if (!tracks.length) return null;
+  const languagePriority = ["en", "en-us", "en-gb"];
+  const scoredTracks = tracks
+    .map((track) => {
+      const language = (track.language_code || "").toLowerCase();
+      const priority = languagePriority.indexOf(language);
+      const languageScore = priority >= 0 ? priority : language.startsWith("en-") ? 5 : 50;
+      const kindScore = track.kind === "asr" ? 1 : 0;
+      return { track, score: languageScore + kindScore };
+    })
+    .sort((a, b) => a.score - b.score);
+  return scoredTracks[0]?.track || null;
+}
+
+async function fetchTranscriptViaApi(videoId: string): Promise<string> {
+  try {
+    const youtube = await Innertube.create();
+    const info = await youtube.getInfo(videoId);
+    const tracks = (info.captions?.caption_tracks || []) as CaptionTrack[];
+    const selectedTrack = pickCaptionTrack(tracks);
+
+    if (selectedTrack?.base_url) {
+      const text = await fetchCaptionText(selectedTrack.base_url);
+      if (text) return text;
+    }
+  } catch (error) {
+    console.error("Innertube path failed:", error);
+  }
+
+  throw new Error("Could not fetch captions for this video.");
 }
 
 export function extractVideoId(input: string): string | null {
