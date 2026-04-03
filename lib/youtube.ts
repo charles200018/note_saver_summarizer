@@ -82,7 +82,36 @@ function extractPlayerResponse(html: string): PlayerResponse | null {
 }
 
 async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
-  const response = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+  try {
+    const innerTubeResponse = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: "ANDROID",
+            clientVersion: "20.10.38",
+          },
+        },
+        videoId,
+      }),
+    });
+
+    if (innerTubeResponse.ok) {
+      const payload = (await innerTubeResponse.json()) as PlayerResponse;
+      if (payload.captions?.playerCaptionsTracklistRenderer?.captionTracks?.length) {
+        return payload;
+      }
+    }
+  } catch {
+    // Fall back to watch-page parsing.
+  }
+
+  const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
     cache: "no-store",
     headers: {
       "accept-language": "en-US,en;q=0.9",
@@ -91,11 +120,11 @@ async function fetchPlayerResponse(videoId: string): Promise<PlayerResponse> {
     },
   });
 
-  if (!response.ok) {
+  if (!watchResponse.ok) {
     throw new Error("Could not load the YouTube watch page.");
   }
 
-  const html = await response.text();
+  const html = await watchResponse.text();
   const playerResponse = extractPlayerResponse(html);
 
   if (!playerResponse) {
@@ -125,6 +154,12 @@ async function fetchCaptionText(baseUrl: string): Promise<string> {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   };
 
+  const legacyTimedTextHeaders = {
+    "accept-language": "en",
+    "user-agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)",
+  };
+
   const jsonUrl = new URL(baseUrl);
   jsonUrl.searchParams.set("fmt", "json3");
 
@@ -143,29 +178,74 @@ async function fetchCaptionText(baseUrl: string): Promise<string> {
     }
   }
 
+  const tryParseXml = (xml: string): string => {
+    const lines: string[] = [];
+
+    const textNodes = xml.match(/<text[^>]*>([\s\S]*?)<\/text>/g) || [];
+    for (const match of textNodes) {
+      const inner = match.replace(/^<text[^>]*>/, "").replace(/<\/text>$/, "");
+      const normalized = normalizeText(inner);
+      if (!normalized) continue;
+      if (lines[lines.length - 1] !== normalized) {
+        lines.push(normalized);
+      }
+    }
+
+    if (!lines.length) {
+      const paragraphPattern = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
+      let paragraphMatch: RegExpExecArray | null;
+
+      while ((paragraphMatch = paragraphPattern.exec(xml)) !== null) {
+        const inner = paragraphMatch[3] || "";
+
+        let line = "";
+        const segmentPattern = /<s[^>]*>([^<]*)<\/s>/g;
+        let segmentMatch: RegExpExecArray | null;
+
+        while ((segmentMatch = segmentPattern.exec(inner)) !== null) {
+          line += segmentMatch[1] || "";
+        }
+
+        if (!line) {
+          line = inner.replace(/<[^>]+>/g, "");
+        }
+
+        const normalized = normalizeText(line);
+        if (!normalized) continue;
+        if (lines[lines.length - 1] !== normalized) {
+          lines.push(normalized);
+        }
+      }
+    }
+
+    return lines.join(" ").trim();
+  };
+
   const xmlResponse = await fetch(baseUrl, {
     cache: "no-store",
     headers,
   });
 
-  if (!xmlResponse.ok) {
+  if (xmlResponse.ok) {
+    const xml = await xmlResponse.text();
+    const parsed = tryParseXml(xml);
+    if (parsed) return parsed;
+  }
+
+  const legacyResponse = await fetch(baseUrl, {
+    cache: "no-store",
+    headers: legacyTimedTextHeaders,
+  });
+
+  if (!legacyResponse.ok) {
     throw new Error("This video does not provide accessible captions.");
   }
 
-  const xml = await xmlResponse.text();
-  const matches = xml.match(/<text[^>]*>([\s\S]*?)<\/text>/g) || [];
-  const lines: string[] = [];
+  const legacyXml = await legacyResponse.text();
+  const legacyParsed = tryParseXml(legacyXml);
+  if (legacyParsed) return legacyParsed;
 
-  for (const match of matches) {
-    const inner = match.replace(/^<text[^>]*>/, "").replace(/<\/text>$/, "");
-    const normalized = normalizeText(inner);
-    if (!normalized) continue;
-    if (lines[lines.length - 1] !== normalized) {
-      lines.push(normalized);
-    }
-  }
-
-  return lines.join(" ").trim();
+  throw new Error("This video does not provide accessible captions.");
 }
 
 function pickCaptionTrack(tracks: CaptionTrack[]): CaptionTrack | null {
